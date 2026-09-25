@@ -33,24 +33,21 @@ async function createWindow(): Promise<void> {
 // path, so it can only get songs from a folder the user picked in the dialog.
 let chosenFolder: string | undefined;
 
-ipcMain.handle(
-  ipcChannels.chooseFolder,
-  async (event): Promise<string | null> => {
-    const window = BrowserWindow.fromWebContents(event.sender);
-    const options: Electron.OpenDialogOptions = {
-      properties: ["openDirectory"],
-    };
-    const result = window
-      ? await dialog.showOpenDialog(window, options)
-      : await dialog.showOpenDialog(options);
-    if (result.canceled || result.filePaths.length === 0) {
-      return null;
-    }
+ipcMain.handle(ipcChannels.chooseFolder, async (event): Promise<string | null> => {
+  const window = BrowserWindow.fromWebContents(event.sender);
+  const options: Electron.OpenDialogOptions = {
+    properties: ["openDirectory"],
+  };
+  const result = window
+    ? await dialog.showOpenDialog(window, options)
+    : await dialog.showOpenDialog(options);
+  if (result.canceled || result.filePaths.length === 0) {
+    return null;
+  }
 
-    chosenFolder = result.filePaths[0];
-    return chosenFolder;
-  },
-);
+  chosenFolder = result.filePaths[0];
+  return chosenFolder;
+});
 
 ipcMain.handle(ipcChannels.scanChosenFolder, async (): Promise<Song[]> => {
   if (!chosenFolder) {

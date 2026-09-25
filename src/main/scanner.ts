@@ -12,9 +12,7 @@ export async function scanFolder(folder: string): Promise<Song[]> {
     withFileTypes: true,
   });
   const files = entries
-    .filter(
-      (entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".mp3"),
-    )
+    .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".mp3"))
     .map((entry) => path.join(entry.parentPath, entry.name))
     .sort(collator.compare);
 
