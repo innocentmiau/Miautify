@@ -1,0 +1,3 @@
+# Check out every text file with LF, also on Windows, so the formatter check
+# gives the same result on both CI runners.
+* text=auto eol=lf

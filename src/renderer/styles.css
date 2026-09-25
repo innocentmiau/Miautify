@@ -1,0 +1,31 @@
+:root {
+  color-scheme: dark;
+  --background: #121212;
+  --text: #f2f2f2;
+  --text-muted: #a0a0a0;
+}
+
+body {
+  margin: 0;
+  height: 100vh;
+  background: var(--background);
+  color: var(--text);
+  font-family: system-ui, sans-serif;
+}
+
+.empty {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty h1 {
+  margin: 0 0 8px;
+}
+
+.empty p {
+  margin: 0;
+  color: var(--text-muted);
+}
