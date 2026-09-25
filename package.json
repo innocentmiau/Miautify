@@ -20,6 +20,7 @@
     "typescript": "^7.0.2"
   },
   "dependencies": {
-    "i18next": "^26.4.2"
+    "i18next": "^26.4.2",
+    "music-metadata": "^11.16.1"
   }
 }

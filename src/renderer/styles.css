@@ -1,31 +1,106 @@
 :root {
   color-scheme: dark;
   --background: #121212;
+  --surface: #1c1c1c;
+  --border: #2a2a2a;
   --text: #f2f2f2;
   --text-muted: #a0a0a0;
+  --accent: #1db954;
 }
 
 body {
   margin: 0;
   height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: var(--background);
   color: var(--text);
   font-family: system-ui, sans-serif;
 }
 
-.empty {
-  height: 100%;
+.toolbar {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  gap: 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
 }
 
-.empty h1 {
-  margin: 0 0 8px;
-}
-
-.empty p {
+.toolbar h1 {
   margin: 0;
+  font-size: 1.25rem;
+}
+
+.toolbar button {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 16px;
+  background: var(--accent);
+  color: #000;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.toolbar button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Long paths shrink with "..." instead of pushing the count off screen. */
+.folder {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--text-muted);
+}
+
+.count {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.content {
+  flex: 1;
+  overflow: auto;
+}
+
+.message {
+  margin: 0;
+  padding: 48px 16px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.songs {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.songs th {
+  position: sticky;
+  top: 0;
+  background: var(--background);
+  color: var(--text-muted);
+  font-weight: normal;
+  text-align: left;
+}
+
+.songs th,
+.songs td {
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.songs tbody tr:hover {
+  background: var(--surface);
+}
+
+/* Duration: right aligned, and digits of equal width so the column lines up. */
+.songs th:last-child,
+.songs td:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }

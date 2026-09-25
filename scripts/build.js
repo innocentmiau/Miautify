@@ -1,5 +1,5 @@
-// Bundles the main process and the renderer with esbuild. The renderer needs a bundler
-// because a web page can't import npm packages (like i18next) by name.
+// Builds the main process, the preload script and the renderer with esbuild. The renderer
+// needs a bundler because a web page can't import npm packages (like i18next) by name.
 // Type checking is separate: `npm run typecheck`.
 import { cpSync, rmSync } from "node:fs";
 import { build } from "esbuild";
@@ -12,7 +12,21 @@ await build({
   bundle: true,
   platform: "node",
   format: "esm",
-  // Electron provides this module at runtime, so it must not be bundled.
+  // Only our own code is bundled. The main process runs in Node, which loads npm packages
+  // (and Electron) from node_modules itself; bundling them breaks packages that still use
+  // CommonJS require(), like music-metadata's dependencies.
+  packages: "external",
+  sourcemap: true,
+});
+
+// Preload scripts run sandboxed, and a sandboxed preload can't be an ES module, so this
+// one is bundled as CommonJS (.cjs).
+await build({
+  entryPoints: ["src/preload/preload.ts"],
+  outfile: "dist/preload/preload.cjs",
+  bundle: true,
+  platform: "node",
+  format: "cjs",
   external: ["electron"],
   sourcemap: true,
 });
