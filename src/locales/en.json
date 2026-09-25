@@ -3,6 +3,18 @@
     "name": "Miautify"
   },
   "library": {
-    "empty": "Nothing to play yet."
+    "empty": "Nothing to play yet.",
+    "chooseFolder": "Choose music folder",
+    "scanning": "Scanning...",
+    "scanFailed": "Could not read this folder.",
+    "noSongs": "No mp3 files in this folder.",
+    "songCount_one": "{{count}} song",
+    "songCount_other": "{{count}} songs"
+  },
+  "song": {
+    "title": "Title",
+    "artist": "Artist",
+    "album": "Album",
+    "duration": "Duration"
   }
 }
