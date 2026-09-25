@@ -1,5 +1,7 @@
 # Miautify
 
+[![CI](https://github.com/innocentmiau/Miautify/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/innocentmiau/Miautify/actions/workflows/ci.yml)
+
 A music player for Linux and Windows that points at a folder of mp3 files and
 plays it. No server, no import step, and it never renames your files.
 
