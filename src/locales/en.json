@@ -16,5 +16,9 @@
     "artist": "Artist",
     "album": "Album",
     "duration": "Duration"
+  },
+  "player": {
+    "play": "Play",
+    "pause": "Pause"
   }
 }

@@ -1,5 +1,6 @@
 import { fallbackLanguage, initI18n } from "../shared/i18n.js";
 import type { Song } from "../shared/library.js";
+import { Player } from "./player.js";
 
 const language = new URLSearchParams(location.search).get("lang") ?? fallbackLanguage;
 const t = await initI18n(language);
@@ -25,6 +26,35 @@ countLabel.className = "count";
 const toolbar = getElement("toolbar");
 const content = getElement("content");
 toolbar.append(heading, chooseButton, folderLabel, countLabel);
+
+const player = new Player();
+
+// The songs in the list, by id, so a double-clicked row can find its song.
+let listedSongs = new Map<string, Song>();
+
+// Player bar: play/pause button, then the current song's title and artist.
+const toggleButton = document.createElement("button");
+toggleButton.type = "button";
+toggleButton.className = "toggle";
+toggleButton.addEventListener("click", () => player.toggle());
+
+const nowTitle = document.createElement("span");
+nowTitle.className = "now-title";
+
+const nowArtist = document.createElement("span");
+nowArtist.className = "now-artist";
+
+const nowPlaying = document.createElement("div");
+nowPlaying.className = "now-playing";
+nowPlaying.append(nowTitle, nowArtist);
+
+const playerBar = getElement("player-bar");
+playerBar.append(toggleButton, nowPlaying);
+
+player.addEventListener("change", () => {
+  updatePlayerBar();
+  markPlayingRow();
+});
 
 showMessage(t("library.empty"));
 
@@ -77,6 +107,7 @@ function showSongs(songs: Song[]): void {
   const body = table.createTBody();
   for (const song of songs) {
     const row = body.insertRow();
+    row.dataset.songId = song.id;
     row.title = song.path;
     // Files without a title tag are shown by their file name.
     for (const text of [
@@ -89,7 +120,60 @@ function showSongs(songs: Song[]): void {
     }
   }
 
+  // One listener for the whole table instead of one per row: with thousands of songs that
+  // is thousands fewer listeners. The event bubbles up from the clicked cell to here.
+  // Double-click plays; single click is kept free for selecting songs later.
+  body.addEventListener("dblclick", (event) => {
+    const row = (event.target as Element).closest("tr");
+    const song = row?.dataset.songId ? listedSongs.get(row.dataset.songId) : undefined;
+    if (song) {
+      player.play(song);
+    }
+  });
+
+  listedSongs = new Map(songs.map((song) => [song.id, song]));
   content.replaceChildren(table);
+  markPlayingRow();
+}
+
+function updatePlayerBar(): void {
+  const song = player.current;
+  playerBar.hidden = song === null;
+  if (!song) {
+    return;
+  }
+
+  nowTitle.textContent = song.title ?? song.fileName;
+  nowArtist.textContent = song.artist ?? "";
+  const label = player.isPlaying ? t("player.pause") : t("player.play");
+  toggleButton.title = label;
+  toggleButton.setAttribute("aria-label", label);
+  toggleButton.replaceChildren(icon(player.isPlaying ? pauseIconPath : playIconPath));
+}
+
+// Highlights the row of the song that is playing, if it's in the current list.
+function markPlayingRow(): void {
+  for (const row of content.querySelectorAll("tr.playing")) {
+    row.classList.remove("playing");
+  }
+  const id = player.current?.id;
+  if (id) {
+    content.querySelector(`tr[data-song-id="${id}"]`)?.classList.add("playing");
+  }
+}
+
+const playIconPath = "M8 5v14l11-7z";
+const pauseIconPath = "M6 5h4v14H6zM14 5h4v14h-4z";
+
+function icon(pathData: string): SVGSVGElement {
+  const namespace = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(namespace, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("aria-hidden", "true");
+  const path = document.createElementNS(namespace, "path");
+  path.setAttribute("d", pathData);
+  svg.append(path);
+  return svg;
 }
 
 // Numbers go through Intl so digits follow the language. Intl.DurationFormat would be the
