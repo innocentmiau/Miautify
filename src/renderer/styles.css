@@ -104,3 +104,63 @@ body {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+/* Double-clicking a row would otherwise select the word under the cursor. */
+.songs tbody tr {
+  user-select: none;
+}
+
+.songs tr.playing td {
+  color: var(--accent);
+}
+
+.player-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+/* The hidden attribute alone loses to display: flex above. */
+.player-bar[hidden] {
+  display: none;
+}
+
+.player-bar .toggle {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--text);
+  cursor: pointer;
+}
+
+.player-bar .toggle svg {
+  width: 20px;
+  height: 20px;
+  fill: var(--background);
+}
+
+.now-playing {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.now-title,
+.now-artist {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.now-artist {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
