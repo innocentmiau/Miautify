@@ -1,21 +1,29 @@
 {
   "name": "miautify",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "A music player that points at a folder and plays it.",
   "license": "MIT",
   "author": "André Leandro",
+  "homepage": "https://github.com/innocentmiau/Miautify",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/innocentmiau/Miautify.git"
+  },
   "type": "module",
   "main": "dist/main/main.js",
+  "desktopName": "miautify.desktop",
   "scripts": {
     "build": "node scripts/build.js",
     "start": "npm run build && electron .",
     "typecheck": "tsc --noEmit",
     "check": "biome check .",
-    "format": "biome format --write ."
+    "format": "biome format --write .",
+    "dist": "npm run build && electron-builder --publish never"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.14",
     "electron": "^44.4.5",
+    "electron-builder": "^26.15.3",
     "esbuild": "^0.28.2",
     "typescript": "^7.0.2"
   },
