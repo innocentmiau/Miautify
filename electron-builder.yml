@@ -1,0 +1,33 @@
+# Packaging config for electron-builder. `npm run dist` builds for the current OS.
+appId: io.github.innocentmiau.miautify
+productName: Miautify
+
+directories:
+  output: release
+
+# Only the built app goes into the package. electron-builder adds the runtime
+# `dependencies` from node_modules by itself (never the devDependencies).
+files:
+  - dist/**
+  - package.json
+
+win:
+  target:
+    - target: nsis
+      arch: x64
+
+nsis:
+  # A normal install wizard, instead of installing silently on double-click.
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  artifactName: ${productName}-Setup-${version}.${ext}
+
+linux:
+  target:
+    - target: AppImage
+      arch: x64
+  category: Audio
+  # Names the .desktop entry after `desktopName` in package.json, which is also the window's
+  # app id, so the taskbar can match the running window to the app's menu entry.
+  syncDesktopName: true
+  artifactName: ${productName}-${version}.${ext}
