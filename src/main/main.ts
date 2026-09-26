@@ -2,6 +2,7 @@ import path from "node:path";
 import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import { initI18n, pickLanguage } from "../shared/i18n.js";
 import { ipcChannels, type Song } from "../shared/library.js";
+import { handleMediaProtocol, registerMediaScheme, rememberSongs } from "./media.js";
 import { scanFolder } from "./scanner.js";
 
 async function createWindow(): Promise<void> {
@@ -53,10 +54,15 @@ ipcMain.handle(ipcChannels.scanChosenFolder, async (): Promise<Song[]> => {
   if (!chosenFolder) {
     throw new Error("No folder has been chosen yet.");
   }
-  return scanFolder(chosenFolder);
+  const songs = await scanFolder(chosenFolder);
+  rememberSongs(songs);
+  return songs;
 });
 
+registerMediaScheme();
+
 app.whenReady().then(() => {
+  handleMediaProtocol();
   createWindow();
 
   // macOS keeps apps running with no windows; clicking the dock icon should reopen one.

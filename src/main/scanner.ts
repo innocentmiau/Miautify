@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { parseFile } from "music-metadata";
@@ -26,7 +27,7 @@ export async function scanFolder(folder: string): Promise<Song[]> {
 }
 
 async function readSong(file: string): Promise<Song> {
-  const song: Song = { path: file, fileName: path.basename(file) };
+  const song: Song = { id: songId(file), path: file, fileName: path.basename(file) };
   try {
     // Covers are skipped: they are the biggest part of the tags and the list doesn't show them.
     const { common, format } = await parseFile(file, { skipCovers: true });
@@ -39,4 +40,9 @@ async function readSong(file: string): Promise<Song> {
     console.warn(`Could not read tags from ${file}:`, error);
   }
   return song;
+}
+
+// Same path, same id, so a rescan doesn't change the ids of songs that didn't move.
+function songId(file: string): string {
+  return createHash("sha256").update(file).digest("hex").slice(0, 16);
 }
