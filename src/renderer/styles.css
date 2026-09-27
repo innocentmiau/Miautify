@@ -1,11 +1,24 @@
 :root {
   color-scheme: dark;
-  --background: #121212;
-  --surface: #1c1c1c;
-  --border: #2a2a2a;
-  --text: #f2f2f2;
-  --text-muted: #a0a0a0;
-  --accent: #1db954;
+
+  /* Theme. Every color in the app comes from these variables, never a literal color in
+     a rule below, so a theme picker later only has to swap these values.
+     Default: "Ocean". All text pairs pass WCAG AA contrast (4.5:1 or more). */
+  --background: #0b1724;
+  --surface: #12212f;
+  --border: #1f3345;
+  --text: #e6f0f7;
+  --text-muted: #8ea5b8;
+  --accent: #1f9bd7;
+  --accent-hover: #45b0e5;
+  /* Text and icons drawn on top of --accent. */
+  --on-accent: #04131d;
+}
+
+/* Keyboard focus rings follow the theme too. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 body {
@@ -36,10 +49,14 @@ body {
   border: none;
   border-radius: 16px;
   background: var(--accent);
-  color: #000;
+  color: var(--on-accent);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
+}
+
+.toolbar button:hover:not(:disabled) {
+  background: var(--accent-hover);
 }
 
 .toolbar button:disabled {
