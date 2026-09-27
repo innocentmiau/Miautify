@@ -115,22 +115,90 @@ body {
 }
 
 .player-bar {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
   align-items: center;
   gap: 16px;
-  padding: 12px 16px;
+  padding: 8px 16px;
   border-top: 1px solid var(--border);
   background: var(--surface);
 }
 
-/* The hidden attribute alone loses to display: flex above. */
+/* The hidden attribute alone loses to display: grid above. */
 .player-bar[hidden] {
   display: none;
 }
 
+.controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.seek-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.time {
+  min-width: 3em;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.time:first-child {
+  text-align: right;
+}
+
+/* A thin track, filled up to --progress (set from app.ts), with a knob on hover. */
+.seek {
+  flex: 1;
+  height: 4px;
+  margin: 0;
+  appearance: none;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--text) var(--progress, 0%),
+    var(--border) var(--progress, 0%)
+  );
+  cursor: pointer;
+}
+
+.seek:hover,
+.seek:focus-visible {
+  background: linear-gradient(
+    to right,
+    var(--accent) var(--progress, 0%),
+    var(--border) var(--progress, 0%)
+  );
+}
+
+.seek::-webkit-slider-thumb {
+  width: 12px;
+  height: 12px;
+  appearance: none;
+  border-radius: 50%;
+  background: var(--text);
+  opacity: 0;
+}
+
+.seek:hover::-webkit-slider-thumb,
+.seek:focus-visible::-webkit-slider-thumb {
+  opacity: 1;
+}
+
+.seek:disabled {
+  cursor: default;
+}
+
 .player-bar .toggle {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
   display: grid;
   place-items: center;
@@ -142,8 +210,8 @@ body {
 }
 
 .player-bar .toggle svg {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   fill: var(--background);
 }
 

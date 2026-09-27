@@ -19,6 +19,8 @@
   },
   "player": {
     "play": "Play",
-    "pause": "Pause"
+    "pause": "Pause",
+    "seek": "Seek",
+    "position": "{{elapsed}} of {{total}}"
   }
 }
