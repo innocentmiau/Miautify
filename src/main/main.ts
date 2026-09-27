@@ -16,7 +16,9 @@ async function createWindow(): Promise<void> {
     minWidth: 480,
     minHeight: 320,
     title: t("app.name"),
-    backgroundColor: "#121212",
+    // Shown for a moment before the page's CSS loads. Keep it equal to --background in
+    // styles.css, or the window flashes a different color on launch.
+    backgroundColor: "#0b1724",
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(import.meta.dirname, "../preload/preload.cjs"),
