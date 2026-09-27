@@ -48,12 +48,58 @@ const nowPlaying = document.createElement("div");
 nowPlaying.className = "now-playing";
 nowPlaying.append(nowTitle, nowArtist);
 
+// Seek row: elapsed time, slider, total time. A native range input comes with keyboard
+// support (arrow keys) and screen reader support for free.
+const elapsedLabel = document.createElement("span");
+elapsedLabel.className = "time";
+
+const seekSlider = document.createElement("input");
+seekSlider.type = "range";
+seekSlider.className = "seek";
+seekSlider.min = "0";
+seekSlider.step = "any";
+seekSlider.setAttribute("aria-label", t("player.seek"));
+
+const totalLabel = document.createElement("span");
+totalLabel.className = "time";
+
+const seekRow = document.createElement("div");
+seekRow.className = "seek-row";
+seekRow.append(elapsedLabel, seekSlider, totalLabel);
+
+const controls = document.createElement("div");
+controls.className = "controls";
+controls.append(toggleButton, seekRow);
+
+// Three columns: song on the left, controls in the center, and the right one kept for
+// volume later.
 const playerBar = getElement("player-bar");
-playerBar.append(toggleButton, nowPlaying);
+playerBar.append(nowPlaying, controls, document.createElement("div"));
+
+// While the slider is being dragged, it shows where you are dragging instead of following
+// the song, and the seek only happens on release. Seeking on every pixel of the drag would
+// send a new request for the file each time.
+let draggingSeek = false;
+
+seekSlider.addEventListener("input", () => {
+  draggingSeek = true;
+  showPosition(Number(seekSlider.value));
+});
+
+seekSlider.addEventListener("change", () => {
+  draggingSeek = false;
+  player.seek(Number(seekSlider.value));
+});
 
 player.addEventListener("change", () => {
   updatePlayerBar();
   markPlayingRow();
+});
+
+player.addEventListener("time", () => {
+  if (!draggingSeek) {
+    showPosition(player.currentTime);
+  }
 });
 
 showMessage(t("library.empty"));
@@ -149,6 +195,23 @@ function updatePlayerBar(): void {
   toggleButton.title = label;
   toggleButton.setAttribute("aria-label", label);
   toggleButton.replaceChildren(icon(player.isPlaying ? pauseIconPath : playIconPath));
+}
+
+// Updates the seek row to show `seconds` into the current song.
+function showPosition(seconds: number): void {
+  const duration = player.duration;
+  const known = Number.isFinite(duration) && duration > 0;
+  seekSlider.disabled = !known;
+  seekSlider.max = String(known ? duration : 0);
+  seekSlider.value = String(known ? seconds : 0);
+  // The played part of the track is colored with a CSS gradient that reads this variable.
+  seekSlider.style.setProperty("--progress", `${known ? (seconds / duration) * 100 : 0}%`);
+
+  const elapsed = formatDuration(known ? seconds : 0);
+  const total = known ? formatDuration(duration) : "";
+  elapsedLabel.textContent = elapsed;
+  totalLabel.textContent = total;
+  seekSlider.setAttribute("aria-valuetext", t("player.position", { elapsed, total }));
 }
 
 // Highlights the row of the song that is playing, if it's in the current list.
