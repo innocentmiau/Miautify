@@ -153,6 +153,12 @@ body {
   gap: 4px;
 }
 
+.buttons {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
 .seek-row {
   width: 100%;
   display: flex;
@@ -213,7 +219,7 @@ body {
   cursor: default;
 }
 
-.player-bar .toggle {
+.toggle {
   width: 32px;
   height: 32px;
   flex-shrink: 0;
@@ -226,10 +232,37 @@ body {
   cursor: pointer;
 }
 
-.player-bar .toggle svg {
+.toggle svg {
   width: 16px;
   height: 16px;
   fill: var(--background);
+}
+
+.icon-button {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+
+.icon-button svg {
+  width: 20px;
+  height: 20px;
+  fill: var(--text-muted);
+}
+
+.icon-button:hover:not(:disabled) svg {
+  fill: var(--text);
+}
+
+.icon-button:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 .now-playing {

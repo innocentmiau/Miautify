@@ -29,14 +29,31 @@ toolbar.append(heading, chooseButton, folderLabel, countLabel);
 
 const player = new Player();
 
-// The songs in the list, by id, so a double-clicked row can find its song.
-let listedSongs = new Map<string, Song>();
+// The songs in the list, in the order shown. Double-clicking one queues it and every song
+// after it.
+let listedSongs: Song[] = [];
 
-// Player bar: play/pause button, then the current song's title and artist.
+// Icon shapes (SVG path data, on a 24 by 24 grid).
+const playIconPath = "M8 5v14l11-7z";
+const pauseIconPath = "M6 5h4v14H6zM14 5h4v14h-4z";
+const previousIconPath = "M6 6h2v12H6zm3.5 6 8.5 6V6z";
+const nextIconPath = "M6 18l8.5-6L6 6v12zM16 6v12h2V6z";
+
+// Player bar: previous, play/pause and next, then the current song's title and artist.
+const previousButton = iconButton(previousIconPath, t("player.previous"));
+previousButton.addEventListener("click", () => player.previous());
+
 const toggleButton = document.createElement("button");
 toggleButton.type = "button";
 toggleButton.className = "toggle";
 toggleButton.addEventListener("click", () => player.toggle());
+
+const nextButton = iconButton(nextIconPath, t("player.next"));
+nextButton.addEventListener("click", () => player.next());
+
+const buttons = document.createElement("div");
+buttons.className = "buttons";
+buttons.append(previousButton, toggleButton, nextButton);
 
 const nowTitle = document.createElement("span");
 nowTitle.className = "now-title";
@@ -69,7 +86,7 @@ seekRow.append(elapsedLabel, seekSlider, totalLabel);
 
 const controls = document.createElement("div");
 controls.className = "controls";
-controls.append(toggleButton, seekRow);
+controls.append(buttons, seekRow);
 
 // Three columns: song on the left, controls in the center, and the right one kept for
 // volume later.
@@ -171,13 +188,14 @@ function showSongs(songs: Song[]): void {
   // Double-click plays; single click is kept free for selecting songs later.
   body.addEventListener("dblclick", (event) => {
     const row = (event.target as Element).closest("tr");
-    const song = row?.dataset.songId ? listedSongs.get(row.dataset.songId) : undefined;
-    if (song) {
-      player.play(song);
+    if (row) {
+      // sectionRowIndex is the row's position in the table body, which is the song's
+      // position in the list.
+      player.playFrom(listedSongs, row.sectionRowIndex);
     }
   });
 
-  listedSongs = new Map(songs.map((song) => [song.id, song]));
+  listedSongs = songs;
   content.replaceChildren(table);
   markPlayingRow();
 }
@@ -195,6 +213,8 @@ function updatePlayerBar(): void {
   toggleButton.title = label;
   toggleButton.setAttribute("aria-label", label);
   toggleButton.replaceChildren(icon(player.isPlaying ? pauseIconPath : playIconPath));
+  previousButton.disabled = !player.hasPrevious;
+  nextButton.disabled = !player.hasNext;
 }
 
 // Updates the seek row to show `seconds` into the current song.
@@ -225,8 +245,17 @@ function markPlayingRow(): void {
   }
 }
 
-const playIconPath = "M8 5v14l11-7z";
-const pauseIconPath = "M6 5h4v14H6zM14 5h4v14h-4z";
+// A small round button showing only an icon. The label is for screen readers and the
+// tooltip, since there's no visible text.
+function iconButton(pathData: string, label: string): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "icon-button";
+  button.title = label;
+  button.setAttribute("aria-label", label);
+  button.append(icon(pathData));
+  return button;
+}
 
 function icon(pathData: string): SVGSVGElement {
   const namespace = "http://www.w3.org/2000/svg";

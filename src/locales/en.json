@@ -18,8 +18,10 @@
     "duration": "Duration"
   },
   "player": {
+    "previous": "Previous",
     "play": "Play",
     "pause": "Pause",
+    "next": "Next",
     "seek": "Seek",
     "position": "{{elapsed}} of {{total}}"
   }
