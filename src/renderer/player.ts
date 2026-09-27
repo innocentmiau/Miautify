@@ -1,29 +1,44 @@
 import { type Song, songUrl } from "../shared/library.js";
+import { Queue } from "./queue.js";
 
 // The only code that touches the <audio> element. The UI calls its methods and listens to
 // its events, so later features (queue, next and previous, crossfade, EQ) change what
 // happens inside here without touching the UI.
 //
 // Events:
-// - "change": the song changed, or it started or stopped playing.
+// - "change": the song changed, it started or stopped playing, or the queue moved.
 // - "time": the position or the duration changed. Fires a few times per second while
 //   playing, so it's kept separate from "change", which does more work in the UI.
 export class Player extends EventTarget {
   #audio = new Audio();
-  #current: Song | null = null;
+  #queue: Queue<Song> | null = null;
 
   constructor() {
     super();
-    for (const event of ["play", "pause", "ended"]) {
+    for (const event of ["play", "pause"]) {
       this.#audio.addEventListener(event, () => this.#changed());
     }
+    // Auto-advance. At the end of the queue, playback just stops.
+    this.#audio.addEventListener("ended", () => {
+      if (!this.next()) {
+        this.#changed();
+      }
+    });
     for (const event of ["timeupdate", "durationchange", "seeking"]) {
       this.#audio.addEventListener(event, () => this.dispatchEvent(new Event("time")));
     }
   }
 
   get current(): Song | null {
-    return this.#current;
+    return this.#queue?.current ?? null;
+  }
+
+  get hasNext(): boolean {
+    return this.#queue?.hasNext ?? false;
+  }
+
+  get hasPrevious(): boolean {
+    return this.#queue?.hasPrevious ?? false;
   }
 
   get isPlaying(): boolean {
@@ -39,25 +54,44 @@ export class Player extends EventTarget {
   // element has read the file's header, the duration from the scan stands in for it.
   get duration(): number {
     const loaded = this.#audio.duration;
-    return Number.isFinite(loaded) ? loaded : (this.#current?.durationSeconds ?? Number.NaN);
+    return Number.isFinite(loaded) ? loaded : (this.current?.durationSeconds ?? Number.NaN);
   }
 
   seek(seconds: number): void {
-    if (!this.#current || !Number.isFinite(this.duration)) {
+    if (!this.current || !Number.isFinite(this.duration)) {
       return;
     }
     this.#audio.currentTime = Math.min(Math.max(seconds, 0), this.duration);
   }
 
-  play(song: Song): void {
-    this.#current = song;
-    this.#audio.src = songUrl(song.id);
-    this.#resume();
-    this.#changed();
+  // Starts a new queue: `songs[start]` and every song after it, in order.
+  playFrom(songs: readonly Song[], start: number): void {
+    this.#queue = new Queue(songs.slice(start));
+    this.#load(this.#queue.current);
+  }
+
+  // Returns false (and does nothing) at the end of the queue.
+  next(): boolean {
+    const song = this.#queue?.next();
+    if (!song) {
+      return false;
+    }
+    this.#load(song);
+    return true;
+  }
+
+  // Returns false (and does nothing) at the start of the queue.
+  previous(): boolean {
+    const song = this.#queue?.previous();
+    if (!song) {
+      return false;
+    }
+    this.#load(song);
+    return true;
   }
 
   toggle(): void {
-    if (!this.#current) {
+    if (!this.current) {
       return;
     }
     if (this.#audio.paused) {
@@ -65,6 +99,12 @@ export class Player extends EventTarget {
     } else {
       this.#audio.pause();
     }
+  }
+
+  #load(song: Song): void {
+    this.#audio.src = songUrl(song.id);
+    this.#resume();
+    this.#changed();
   }
 
   #resume(): void {

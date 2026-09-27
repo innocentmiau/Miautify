@@ -6,7 +6,9 @@
     "lib": ["ES2023", "DOM"],
     "strict": true,
     "resolveJsonModule": true,
-    "noEmit": true
+    "noEmit": true,
+    // Tests import .ts files directly, because Node runs them without a build step.
+    "allowImportingTsExtensions": true
   },
-  "include": ["src"]
+  "include": ["src", "test"]
 }
