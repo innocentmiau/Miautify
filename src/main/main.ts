@@ -1,9 +1,14 @@
+import { stat } from "node:fs/promises";
 import path from "node:path";
 import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import { initI18n, pickLanguage } from "../shared/i18n.js";
-import { ipcChannels, type Song } from "../shared/library.js";
+import { ipcChannels, type Song, type StartupState } from "../shared/library.js";
 import { handleMediaProtocol, registerMediaScheme, rememberSongs } from "./media.js";
 import { scanFolder } from "./scanner.js";
+import { Storage } from "./storage.js";
+
+// Opened when the app is ready (see the bottom of this file).
+let storage: Storage;
 
 async function createWindow(): Promise<void> {
   // A manual override from settings will take priority here once settings exist.
@@ -36,6 +41,19 @@ async function createWindow(): Promise<void> {
 // path, so it can only get songs from a folder the user picked in the dialog.
 let chosenFolder: string | undefined;
 
+ipcMain.handle(ipcChannels.getStartupState, async (): Promise<StartupState> => {
+  const folder = storage.get("library.folder");
+  // The folder may be gone (renamed, or on a drive that isn't plugged in). The setting is
+  // kept anyway, so it works again next launch if the drive comes back.
+  if (folder && (await isFolder(folder))) {
+    chosenFolder = folder;
+  }
+  return {
+    folder: chosenFolder ?? null,
+    lastSongId: storage.get("player.lastSongId") ?? null,
+  };
+});
+
 ipcMain.handle(ipcChannels.chooseFolder, async (event): Promise<string | null> => {
   const window = BrowserWindow.fromWebContents(event.sender);
   const options: Electron.OpenDialogOptions = {
@@ -49,6 +67,7 @@ ipcMain.handle(ipcChannels.chooseFolder, async (event): Promise<string | null> =
   }
 
   chosenFolder = result.filePaths[0];
+  storage.set("library.folder", chosenFolder);
   return chosenFolder;
 });
 
@@ -61,9 +80,27 @@ ipcMain.handle(ipcChannels.scanChosenFolder, async (): Promise<Song[]> => {
   return songs;
 });
 
+ipcMain.on(ipcChannels.setLastSong, (_event, id: unknown) => {
+  // Anything from the page is checked before it's stored.
+  if (typeof id === "string") {
+    storage.set("player.lastSongId", id);
+  }
+});
+
+async function isFolder(folder: string): Promise<boolean> {
+  try {
+    return (await stat(folder)).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
 registerMediaScheme();
 
 app.whenReady().then(() => {
+  // userData is the app's own data folder, for example ~/.config/Miautify on Linux and
+  // %APPDATA%\Miautify on Windows.
+  storage = new Storage(path.join(app.getPath("userData"), "miautify.db"));
   handleMediaProtocol();
   createWindow();
 
@@ -73,6 +110,10 @@ app.whenReady().then(() => {
       createWindow();
     }
   });
+});
+
+app.on("will-quit", () => {
+  storage?.close();
 });
 
 app.on("window-all-closed", () => {

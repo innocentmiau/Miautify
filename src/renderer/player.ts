@@ -70,6 +70,12 @@ export class Player extends EventTarget {
     this.#load(this.#queue.current);
   }
 
+  // Same queue as playFrom, but paused: the song shows in the player bar, ready to play.
+  selectFrom(songs: readonly Song[], start: number): void {
+    this.#queue = new Queue(songs.slice(start));
+    this.#load(this.#queue.current, { autoplay: false });
+  }
+
   // Returns false (and does nothing) at the end of the queue.
   next(): boolean {
     const song = this.#queue?.next();
@@ -101,9 +107,11 @@ export class Player extends EventTarget {
     }
   }
 
-  #load(song: Song): void {
+  #load(song: Song, { autoplay = true } = {}): void {
     this.#audio.src = songUrl(song.id);
-    this.#resume();
+    if (autoplay) {
+      this.#resume();
+    }
     this.#changed();
   }
 

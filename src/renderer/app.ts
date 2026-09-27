@@ -108,9 +108,18 @@ seekSlider.addEventListener("change", () => {
   player.seek(Number(seekSlider.value));
 });
 
+// The id last sent to be remembered, so it's only sent when the song actually changes.
+let savedSongId: string | null = null;
+
 player.addEventListener("change", () => {
   updatePlayerBar();
   markPlayingRow();
+
+  const id = player.current?.id;
+  if (id && id !== savedSongId) {
+    savedSongId = id;
+    window.miautify.setLastSong(id);
+  }
 });
 
 player.addEventListener("time", () => {
@@ -119,21 +128,55 @@ player.addEventListener("time", () => {
   }
 });
 
-showMessage(t("library.empty"));
-
 chooseButton.addEventListener("click", async () => {
   chooseButton.disabled = true;
   try {
     const folder = await window.miautify.chooseFolder();
+    if (folder !== null) {
+      await openLibrary(folder);
+    }
+    // null means cancelled: keep whatever was showing before.
+  } catch (error) {
+    console.error(error);
+  } finally {
+    chooseButton.disabled = false;
+  }
+});
+
+// On launch: open the folder from last time, and put the last song back in the player bar,
+// paused. Called from the end of this file, once everything above and below is defined.
+async function restoreLastSession(): Promise<void> {
+  chooseButton.disabled = true;
+  try {
+    const { folder, lastSongId } = await window.miautify.getStartupState();
+    savedSongId = lastSongId;
     if (folder === null) {
-      return; // Cancelled: keep whatever was showing before.
+      showMessage(t("library.empty"));
+      return;
     }
 
-    folderLabel.textContent = folder;
-    folderLabel.title = folder;
-    countLabel.textContent = "";
-    showMessage(t("library.scanning"));
+    const songs = await openLibrary(folder);
+    // The song may have been deleted or moved since, then there's nothing to restore.
+    const index = songs?.findIndex((song) => song.id === lastSongId) ?? -1;
+    if (songs && index >= 0) {
+      player.selectFrom(songs, index);
+    }
+  } catch (error) {
+    console.error(error);
+    showMessage(t("library.empty"));
+  } finally {
+    chooseButton.disabled = false;
+  }
+}
 
+// Scans the folder and lists its songs. Returns them, or null if the folder couldn't be read.
+async function openLibrary(folder: string): Promise<Song[] | null> {
+  folderLabel.textContent = folder;
+  folderLabel.title = folder;
+  countLabel.textContent = "";
+  showMessage(t("library.scanning"));
+
+  try {
     const songs = await window.miautify.scanChosenFolder();
     countLabel.textContent = t("library.songCount", { count: songs.length });
     if (songs.length === 0) {
@@ -141,13 +184,13 @@ chooseButton.addEventListener("click", async () => {
     } else {
       showSongs(songs);
     }
+    return songs;
   } catch (error) {
     console.error(error);
     showMessage(t("library.scanFailed"));
-  } finally {
-    chooseButton.disabled = false;
+    return null;
   }
-});
+}
 
 function showMessage(text: string): void {
   const message = document.createElement("p");
@@ -289,3 +332,7 @@ function getElement(id: string): HTMLElement {
   }
   return element;
 }
+
+// Last line on purpose: restoring uses constants defined above (like the number formats),
+// which don't exist yet while the file is still being read from top to bottom.
+void restoreLastSession();
