@@ -1,5 +1,6 @@
 import { fallbackLanguage, initI18n } from "../shared/i18n.js";
 import type { Song } from "../shared/library.js";
+import { FolderTree } from "./folder-tree.js";
 import { buildFolderTree, type Folder, findFolder, folderOfSong } from "./folders.js";
 import { Player } from "./player.js";
 import { SongList } from "./song-list.js";
@@ -17,6 +18,7 @@ heading.textContent = t("app.name");
 
 const chooseButton = document.createElement("button");
 chooseButton.type = "button";
+chooseButton.className = "primary";
 chooseButton.textContent = t("library.chooseFolder");
 
 // Rescans the same folder, to pick up files added or changed since. Shown once a folder is open.
@@ -38,7 +40,7 @@ statusLabel.className = "status";
 
 const toolbar = getElement("toolbar");
 const content = getElement("content");
-toolbar.append(heading, chooseButton, refreshButton, folderLabel, countLabel, statusLabel);
+toolbar.append(heading, folderLabel, countLabel, statusLabel);
 
 const player = new Player();
 
@@ -59,6 +61,25 @@ breadcrumb.setAttribute("aria-label", t("library.folderPath"));
 
 const folderGrid = document.createElement("div");
 folderGrid.className = "folder-grid";
+
+// The main menu on the left edge: the folder tree, then library actions at the bottom.
+// Settings will join them once there's a settings page.
+const folderTree = new FolderTree({
+  onOpen: (folder) => showFolder(folder),
+  expandLabel: t("menu.expand"),
+  collapseLabel: t("menu.collapse"),
+});
+
+const foldersHeading = document.createElement("h2");
+foldersHeading.textContent = t("menu.folders");
+
+const menuActions = document.createElement("div");
+menuActions.className = "menu-actions";
+menuActions.append(chooseButton, refreshButton);
+
+const menu = document.createElement("div");
+menu.className = "menu";
+menu.append(foldersHeading, folderTree.element, menuActions);
 
 const songList = new SongList(content, {
   columns: [t("song.title"), t("song.artist"), t("song.album"), t("song.duration")],
@@ -82,6 +103,7 @@ const volumeHighIconPath =
   "M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z";
 const volumeLowIconPath =
   "M18.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z";
+const menuIconPath = "M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z";
 const folderIconPath =
   "M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z";
 const volumeOffIconPath =
@@ -168,6 +190,12 @@ volumeControl.append(muteButton, volumeSlider);
 // Three columns: song on the left, controls in the center, volume on the right.
 const playerBar = getElement("player-bar");
 playerBar.append(nowPlaying, controls, volumeControl);
+
+const sidebar = getElement("sidebar");
+sidebar.setAttribute("aria-label", t("menu.label"));
+const menuIcon = icon(menuIconPath);
+menuIcon.classList.add("menu-icon");
+sidebar.append(menuIcon, menu);
 
 // While the slider is being dragged, it shows where you are dragging instead of following
 // the song, and the seek only happens on release. Seeking on every pixel of the drag would
@@ -259,6 +287,7 @@ async function openLibrary(folder: string, restoreSongId: string | null = null):
     restoreSong(restoreSongId);
   } else {
     tree = null;
+    folderTree.setTree(null);
     listedSongs = [];
     countLabel.textContent = "";
     showMessage(t("library.scanning"));
@@ -326,11 +355,13 @@ function showLibrary(songs: Song[], { keepScroll = false } = {}): void {
   countLabel.textContent = t("library.songCount", { count: songs.length });
   if (songs.length === 0) {
     tree = null;
+    folderTree.setTree(null);
     listedSongs = [];
     showMessage(t("library.noSongs"));
     return;
   }
   tree = buildFolderTree(libraryRoot, songs);
+  folderTree.setTree(tree);
   // Stay in the open folder, or its nearest parent if it was deleted since.
   showFolder(findFolder(tree, openFolder?.segments ?? []), { keepScroll });
 }
@@ -340,6 +371,7 @@ function showFolder(folder: Folder, { keepScroll = false } = {}): void {
   const scrollTop = content.scrollTop;
   openFolder = folder;
   listedSongs = folder.songs;
+  folderTree.setOpen(folder);
   renderBreadcrumb(folder);
   renderFolderGrid(folder);
 

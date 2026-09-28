@@ -44,36 +44,40 @@ body {
   font-size: 1.25rem;
 }
 
-.toolbar button {
+/* Text buttons: "primary" is filled with the accent, "secondary" is outlined. */
+.primary,
+.secondary {
   padding: 6px 14px;
-  border: none;
+  border: 1px solid transparent;
   border-radius: 16px;
-  background: var(--accent);
-  color: var(--on-accent);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
 }
 
-.toolbar button:hover:not(:disabled) {
+.primary {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.primary:hover:not(:disabled) {
   background: var(--accent-hover);
 }
 
-.toolbar button:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-/* A quieter button next to the main one: outlined instead of filled. */
-.toolbar button.secondary {
-  border: 1px solid var(--border);
+.secondary {
+  border-color: var(--border);
   background: none;
   color: var(--text);
 }
 
-.toolbar button.secondary:hover:not(:disabled) {
+.secondary:hover:not(:disabled) {
   border-color: var(--text-muted);
-  background: none;
+}
+
+.primary:disabled,
+.secondary:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 /* Long paths shrink with "..." instead of pushing the count off screen. */
@@ -96,11 +100,159 @@ body {
   font-size: 0.875rem;
 }
 
+/* Between the toolbar and the player bar: the main menu and the content. */
+.middle {
+  --menu-strip: 25px;
+  --menu-width: 280px;
+  flex: 1;
+  /* Lets the content scroll inside instead of growing the page. */
+  min-height: 0;
+  display: flex;
+  position: relative;
+}
+
 .content {
   flex: 1;
   overflow: auto;
+  /* Room for the closed menu's strip, which sits on top of this edge. */
+  margin-left: var(--menu-strip);
   /* The song list measures its rows from here (offsetTop is relative to this). */
   position: relative;
+}
+
+/* The main menu: a thin strip on the left edge that slides open over the content while
+   the mouse is on it (or keyboard focus is inside it). It opens after a short delay, so
+   brushing past the edge doesn't flash it open, and closes a moment after leaving. */
+.sidebar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 5;
+  /* The border is part of the width, so the strip is exactly --menu-strip wide. */
+  box-sizing: border-box;
+  width: var(--menu-strip);
+  overflow: hidden;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  transition: width 150ms ease 300ms;
+}
+
+.sidebar:hover,
+.sidebar:focus-within {
+  width: var(--menu-width);
+  box-shadow: 4px 0 16px rgb(0 0 0 / 40%);
+  transition-delay: 120ms;
+}
+
+/* The menu icon on the closed strip. */
+.menu-icon {
+  position: absolute;
+  top: 12px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  fill: var(--text-muted);
+  transition: opacity 150ms ease 300ms;
+}
+
+.sidebar:hover .menu-icon,
+.sidebar:focus-within .menu-icon {
+  opacity: 0;
+  transition-delay: 120ms;
+}
+
+/* The menu's contents keep their full width, so they don't reflow while it slides, and
+   are faded out while closed (still reachable with Tab, which opens the menu). */
+.menu {
+  width: var(--menu-width);
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  opacity: 0;
+  transition: opacity 150ms ease 300ms;
+}
+
+.sidebar:hover .menu,
+.sidebar:focus-within .menu {
+  opacity: 1;
+  transition-delay: 120ms;
+}
+
+.menu h2 {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.menu-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* The tree takes the menu's free space and scrolls on its own. */
+.folder-tree {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.folder-tree,
+.folder-tree ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.folder-tree-row {
+  display: flex;
+  align-items: center;
+  /* --depth is set per row from folder-tree.ts. */
+  padding-left: calc(var(--depth) * 14px);
+}
+
+.folder-tree .arrow {
+  width: 20px;
+  flex: none;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.folder-tree .name {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 6px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.folder-tree .name:hover {
+  background: var(--border);
+}
+
+/* The folder open in the main area. */
+.folder-tree .name[aria-current] {
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .message {
