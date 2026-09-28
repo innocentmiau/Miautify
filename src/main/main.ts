@@ -158,6 +158,13 @@ async function isFolder(folder: string): Promise<boolean> {
   }
 }
 
+// The name the system shows for the app, for example in KDE's media widget (MPRIS). Without
+// it, that shows "Electron" while running from source. Electron derives the data folder
+// from the name, so the current one is pinned first: from source it stays
+// ~/.config/miautify, and the installed app keeps its own ~/.config/Miautify.
+app.setPath("userData", app.getPath("userData"));
+app.setName("Miautify");
+
 registerMediaScheme();
 
 app.whenReady().then(() => {
