@@ -26,17 +26,31 @@ export interface ScanResult {
 
 type Tags = Pick<CachedSong, "title" | "artist" | "album" | "durationSeconds">;
 
+export interface ScanOptions {
+  // Reads one file's tags. A parameter so tests can count reads without real mp3 files.
+  readTags?: (file: string) => Promise<Tags>;
+  // Called as files are read: `done` of `total` files that needed their tags read.
+  onProgress?: (done: number, total: number) => void;
+}
+
 // numeric: true sorts "2 - Intro.mp3" before "10 - Outro.mp3".
 const collator = new Intl.Collator(undefined, { numeric: true });
 
+// The folder's songs as the cache knows them, without touching the folder at all. Shown on
+// launch while the real scan checks for changes in the background.
+export function songsFromCache(folder: string, cache: ReadonlyMap<string, CachedSong>): Song[] {
+  return [...cache.values()]
+    .filter((entry) => isInside(entry.path, folder))
+    .sort((a, b) => collator.compare(a.path, b.path))
+    .map(toSong);
+}
+
 // Lists the folder and returns its songs. Files whose size and modified time match the
 // cache reuse the cached tags; only new or changed files are opened and read.
-//
-// `readTags` is a parameter so tests can count the reads without real mp3 files.
 export async function scanFolder(
   folder: string,
   cache: ReadonlyMap<string, CachedSong>,
-  readTags: (file: string) => Promise<Tags> = readTagsFromFile,
+  { readTags = readTagsFromFile, onProgress }: ScanOptions = {},
 ): Promise<ScanResult> {
   const entries = await readdir(folder, { recursive: true, withFileTypes: true });
   const files = entries
@@ -48,6 +62,15 @@ export async function scanFolder(
   // thousands of files. They run in parallel.
   const stats = await Promise.all(files.map((file) => stat(file).catch(() => null)));
 
+  // First pass: which files need their tags read? Knowing the count up front is what
+  // makes "120 of 5,400" possible.
+  const isUnchanged = (file: string, index: number): boolean => {
+    const info = stats[index];
+    const entry = cache.get(file);
+    return !!info && !!entry && entry.size === info.size && entry.mtimeMs === info.mtimeMs;
+  };
+  const toRead = files.filter((file, index) => stats[index] && !isUnchanged(file, index)).length;
+
   const songs: Song[] = [];
   const changed: CachedSong[] = [];
   for (const [index, file] of files.entries()) {
@@ -57,11 +80,12 @@ export async function scanFolder(
     }
 
     let entry = cache.get(file);
-    if (!entry || entry.size !== info.size || entry.mtimeMs !== info.mtimeMs) {
+    if (!entry || !isUnchanged(file, index)) {
       // One file at a time keeps this simple. If a first scan of a big library is slow,
       // reading a few files in parallel is the first thing to try.
       entry = { path: file, size: info.size, mtimeMs: info.mtimeMs, ...(await readTags(file)) };
       changed.push(entry);
+      onProgress?.(changed.length, toRead);
     }
     songs.push(toSong(entry));
   }

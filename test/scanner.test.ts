@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, unlinkSync, writeFileSync } from "node:
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, describe, it } from "node:test";
-import { type CachedSong, scanFolder } from "../src/main/scanner.ts";
+import { type CachedSong, scanFolder, songsFromCache } from "../src/main/scanner.ts";
 
 // A fake tag reader: records which files it was asked to read, and returns the file name
 // as the title.
@@ -31,16 +31,16 @@ describe("scanFolder", () => {
 
   it("reads every mp3 on the first scan and nothing else", async () => {
     const { reads, readTags } = fakeReader();
-    const result = await scanFolder(music, new Map(), readTags);
+    const result = await scanFolder(music, new Map(), { readTags });
     assert.deepEqual(reads.sort(), ["a.mp3", "b.MP3"]);
     assert.equal(result.songs.length, 2);
     assert.equal(result.changed.length, 2);
   });
 
   it("reads nothing again when no file changed", async () => {
-    const first = await scanFolder(music, new Map(), fakeReader().readTags);
+    const first = await scanFolder(music, new Map(), { readTags: fakeReader().readTags });
     const { reads, readTags } = fakeReader();
-    const second = await scanFolder(music, cacheOf(first.changed), readTags);
+    const second = await scanFolder(music, cacheOf(first.changed), { readTags });
     assert.deepEqual(reads, []);
     assert.deepEqual(second.changed, []);
     assert.deepEqual(
@@ -50,26 +50,47 @@ describe("scanFolder", () => {
   });
 
   it("reads a file again when its size changed", async () => {
-    const first = await scanFolder(music, new Map(), fakeReader().readTags);
+    const first = await scanFolder(music, new Map(), { readTags: fakeReader().readTags });
     writeFileSync(path.join(music, "a.mp3"), "a, now longer");
     const { reads, readTags } = fakeReader();
-    await scanFolder(music, cacheOf(first.changed), readTags);
+    await scanFolder(music, cacheOf(first.changed), { readTags });
     assert.deepEqual(reads, ["a.mp3"]);
   });
 
   it("reports deleted files, but not files outside the folder", async () => {
     const extra = path.join(music, "extra.mp3");
     writeFileSync(extra, "x");
-    const first = await scanFolder(music, new Map(), fakeReader().readTags);
+    const first = await scanFolder(music, new Map(), { readTags: fakeReader().readTags });
     unlinkSync(extra);
 
     // A cached song from a different folder whose name starts the same way.
     const elsewhere = { path: path.join(root, "music-old", "c.mp3"), size: 1, mtimeMs: 1 };
-    const result = await scanFolder(
-      music,
-      cacheOf([...first.changed, elsewhere]),
-      fakeReader().readTags,
-    );
+    const result = await scanFolder(music, cacheOf([...first.changed, elsewhere]), {
+      readTags: fakeReader().readTags,
+    });
     assert.deepEqual(result.removed, [extra]);
+  });
+
+  it("reports progress only for the files it reads", async () => {
+    const first = await scanFolder(music, new Map(), { readTags: fakeReader().readTags });
+    writeFileSync(path.join(music, "a.mp3"), "changed again");
+    const progress: string[] = [];
+    await scanFolder(music, cacheOf(first.changed), {
+      readTags: fakeReader().readTags,
+      onProgress: (done, total) => progress.push(`${done}/${total}`),
+    });
+    assert.deepEqual(progress, ["1/1"]);
+  });
+
+  it("lists cached songs of a folder without reading it", () => {
+    const cache = cacheOf([
+      { path: path.join(music, "b.mp3"), size: 1, mtimeMs: 1, title: "B" },
+      { path: path.join(music, "a.mp3"), size: 1, mtimeMs: 1, title: "A" },
+      { path: path.join(root, "music-old", "c.mp3"), size: 1, mtimeMs: 1, title: "C" },
+    ]);
+    assert.deepEqual(
+      songsFromCache(music, cache).map((song) => song.title),
+      ["A", "B"],
+    );
   });
 });
