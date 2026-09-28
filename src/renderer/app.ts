@@ -1,6 +1,7 @@
 import { fallbackLanguage, initI18n } from "../shared/i18n.js";
 import type { Song } from "../shared/library.js";
 import { Player } from "./player.js";
+import { SongList } from "./song-list.js";
 
 const language = new URLSearchParams(location.search).get("lang") ?? fallbackLanguage;
 const t = await initI18n(language);
@@ -43,6 +44,19 @@ const player = new Player();
 // The songs in the list, in the order shown. Double-clicking one queues it and every song
 // after it.
 let listedSongs: Song[] = [];
+
+const songList = new SongList(content, {
+  columns: [t("song.title"), t("song.artist"), t("song.album"), t("song.duration")],
+  // Files without a title tag are shown by their file name.
+  cells: (song) => [
+    song.title ?? song.fileName,
+    song.artist ?? "",
+    song.album ?? "",
+    formatDuration(song.durationSeconds),
+  ],
+  isPlaying: (song) => song.id === player.current?.id,
+  onPlay: (index) => player.playFrom(listedSongs, index),
+});
 
 // Icon shapes (SVG path data, on a 24 by 24 grid).
 const playIconPath = "M8 5v14l11-7z";
@@ -158,7 +172,7 @@ let savedSongId: string | null = null;
 
 player.addEventListener("change", () => {
   updatePlayerBar();
-  markPlayingRow();
+  songList.refresh(); // Moves the "playing" highlight.
 
   const id = player.current?.id;
   if (id && id !== savedSongId) {
@@ -289,10 +303,14 @@ function showLibrary(songs: Song[], { keepScroll = false } = {}): void {
     showMessage(t("library.noSongs"));
     return;
   }
-  const scrollTop = content.scrollTop;
-  showSongs(songs);
-  if (keepScroll) {
-    content.scrollTop = scrollTop;
+  listedSongs = songs;
+  songList.setSongs(songs);
+  if (!songList.element.isConnected) {
+    content.replaceChildren(songList.element);
+  }
+  // The list element is reused, so it stays where it was scrolled unless told otherwise.
+  if (!keepScroll) {
+    content.scrollTop = 0;
   }
 }
 
@@ -301,50 +319,6 @@ function showMessage(text: string): void {
   message.className = "message";
   message.textContent = text;
   content.replaceChildren(message);
-}
-
-function showSongs(songs: Song[]): void {
-  const table = document.createElement("table");
-  table.className = "songs";
-
-  const headerRow = table.createTHead().insertRow();
-  for (const label of [t("song.title"), t("song.artist"), t("song.album"), t("song.duration")]) {
-    const cell = document.createElement("th");
-    cell.textContent = label;
-    headerRow.append(cell);
-  }
-
-  const body = table.createTBody();
-  for (const song of songs) {
-    const row = body.insertRow();
-    row.dataset.songId = song.id;
-    row.title = song.path;
-    // Files without a title tag are shown by their file name.
-    for (const text of [
-      song.title ?? song.fileName,
-      song.artist ?? "",
-      song.album ?? "",
-      formatDuration(song.durationSeconds),
-    ]) {
-      row.insertCell().textContent = text;
-    }
-  }
-
-  // One listener for the whole table instead of one per row: with thousands of songs that
-  // is thousands fewer listeners. The event bubbles up from the clicked cell to here.
-  // Double-click plays; single click is kept free for selecting songs later.
-  body.addEventListener("dblclick", (event) => {
-    const row = (event.target as Element).closest("tr");
-    if (row) {
-      // sectionRowIndex is the row's position in the table body, which is the song's
-      // position in the list.
-      player.playFrom(listedSongs, row.sectionRowIndex);
-    }
-  });
-
-  listedSongs = songs;
-  content.replaceChildren(table);
-  markPlayingRow();
 }
 
 function updatePlayerBar(): void {
@@ -405,17 +379,6 @@ function updateVolumeControl(): void {
 
 function saveVolume(): void {
   window.miautify.saveVolume(player.volume, player.muted);
-}
-
-// Highlights the row of the song that is playing, if it's in the current list.
-function markPlayingRow(): void {
-  for (const row of content.querySelectorAll("tr.playing")) {
-    row.classList.remove("playing");
-  }
-  const id = player.current?.id;
-  if (id) {
-    content.querySelector(`tr[data-song-id="${id}"]`)?.classList.add("playing");
-  }
 }
 
 // A small round button showing only an icon. The label is for screen readers and the

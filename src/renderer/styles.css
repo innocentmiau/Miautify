@@ -99,6 +99,8 @@ body {
 .content {
   flex: 1;
   overflow: auto;
+  /* The song list measures its rows from here (offsetTop is relative to this). */
+  position: relative;
 }
 
 .message {
@@ -108,44 +110,69 @@ body {
   color: var(--text-muted);
 }
 
-.songs {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.songs th {
-  position: sticky;
-  top: 0;
-  background: var(--background);
-  color: var(--text-muted);
-  font-weight: normal;
-  text-align: left;
-}
-
-.songs th,
-.songs td {
-  padding: 6px 16px;
+/* Header and rows share the same columns: title, artist, album, duration. */
+.song-list-header,
+.song-row {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr) minmax(0, 2fr) 5em;
+  column-gap: 16px;
+  align-items: center;
+  padding: 0 16px;
   border-bottom: 1px solid var(--border);
 }
 
-.songs tbody tr:hover {
-  background: var(--surface);
+.song-list-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: var(--row-height);
+  background: var(--background);
+  color: var(--text-muted);
 }
 
-/* Duration: right aligned, and digits of equal width so the column lines up. */
-.songs th:last-child,
-.songs td:last-child {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
+/* Holds the rows; its height (set from song-list.ts) is all rows together. */
+.song-list-body {
+  position: relative;
 }
 
-/* Double-clicking a row would otherwise select the word under the cursor. */
-.songs tbody tr {
+/* Rows are placed with transform: translateY(...) from song-list.ts. Their height must
+   match rowHeight there, including the border (box-sizing). */
+.song-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  box-sizing: border-box;
+  height: var(--row-height);
+  /* Double-clicking a row would otherwise select the word under the cursor. */
   user-select: none;
 }
 
-.songs tr.playing td {
+.song-row[hidden] {
+  display: none;
+}
+
+.song-row:hover {
+  background: var(--surface);
+}
+
+.song-row.playing {
   color: var(--accent);
+}
+
+/* Long titles end in "..." instead of wrapping, since every row has the same height. */
+.song-list-header > div,
+.song-row > div {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Duration: right aligned, and digits of equal width so the column lines up. */
+.song-list-header > div:last-child,
+.song-row > div:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .player-bar {
