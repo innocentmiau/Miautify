@@ -63,10 +63,13 @@ Done, with the date each one landed:
 - [x] Remember the folder and the last song between launches (2026-09-27)
 - [x] Tag cache for fast launches, background check for changes, Refresh button (2026-09-28)
 - [x] Volume and mute, remembered between launches (2026-09-28)
+- [x] Smooth scrolling through thousands of songs (2026-09-28)
 
 Planned:
 
-- [ ] Smooth scrolling through thousands of songs
+- [ ] Browse by folder: a folder shows its subfolders above its songs, like a playlist
+- [ ] Folder tree on the left edge that opens when you hover it
+- [ ] Option to list every song in a folder and its subfolders together
 - [ ] Album covers
 - [ ] Search, ignoring accents, punctuation and word order
 - [ ] Sort by any column
