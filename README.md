@@ -15,6 +15,9 @@ No server, no import step, and it never renames or moves your files.
 - **Your folder is the library.** Pick a folder and Miautify finds every mp3 in it,
   subfolders included, and reads the title, artist, album and length from the tags.
   Songs without tags show their file name.
+- **Folders work like playlists.** Opening a folder shows its subfolders at the top and
+  its own songs below. Double-click a subfolder to go in, and use the path at the top to
+  go back up. Playing a song plays through the rest of that folder.
 - **Opens straight into your music.** It remembers the folder and the last song, which
   waits in the player bar, paused, ready to play.
 - **Fast with big libraries.** Tags are cached, so launching shows your list right away
@@ -46,7 +49,8 @@ Download the latest build from the [Releases page](https://github.com/innocentmi
 ## Usage
 
 1. Click **Choose music folder** and pick the folder with your mp3s.
-2. Double-click a song to play it. The songs after it in the list play next.
+2. Double-click a folder to open it, and a song to play it. The songs after it in that
+   folder play next. Click a folder name in the path at the top to go back up.
 3. Use the player bar at the bottom to pause, skip, jump in the song or change the volume.
 4. Added or changed files? Click **Refresh**.
 
@@ -64,10 +68,10 @@ Done, with the date each one landed:
 - [x] Tag cache for fast launches, background check for changes, Refresh button (2026-09-28)
 - [x] Volume and mute, remembered between launches (2026-09-28)
 - [x] Smooth scrolling through thousands of songs (2026-09-28)
+- [x] Browse by folder: a folder shows its subfolders above its songs, like a playlist (2026-09-28)
 
 Planned:
 
-- [ ] Browse by folder: a folder shows its subfolders above its songs, like a playlist
 - [ ] Folder tree on the left edge that opens when you hover it
 - [ ] Option to list every song in a folder and its subfolders together
 - [ ] Album covers
