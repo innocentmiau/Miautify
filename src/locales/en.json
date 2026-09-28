@@ -32,5 +32,11 @@
     "volume": "Volume",
     "mute": "Mute",
     "unmute": "Unmute"
+  },
+  "menu": {
+    "label": "Main menu",
+    "folders": "Folders",
+    "expand": "Show subfolders",
+    "collapse": "Hide subfolders"
   }
 }
