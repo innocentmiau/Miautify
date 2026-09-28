@@ -28,6 +28,9 @@ No server, no import step, and it never renames or moves your files.
   changes without restarting.
 - **Playback:** double-click a song to play it, then play and pause, next and previous,
   and a timeline to jump anywhere in the song. When a song ends, the next one starts.
+- **Keyboard shortcuts:** Space to play or pause, the arrows to jump 5 seconds, Ctrl with
+  the arrows for previous, next and volume, M to mute, Backspace (or the mouse back
+  button) to go up a folder. Press `?` to see them all.
 - **Volume and mute**, remembered between launches. The slider follows how loudness is
   heard, so the whole range is useful.
 - **Your files stay yours.** Miautify only reads the music folder. Its own data (settings
@@ -76,6 +79,7 @@ Done, with the date each one landed:
 - [x] Browse by folder: a folder shows its subfolders above its songs, like a playlist (2026-09-28)
 - [x] Main menu on the left edge with the folder tree, opens when you hover it (2026-09-28)
 - [x] "Include subfolders" switch: list and play every song in a folder and its subfolders together (2026-09-28)
+- [x] Keyboard shortcuts, with a list of them on `?` (2026-09-28)
 
 Planned:
 
@@ -83,7 +87,6 @@ Planned:
 - [ ] Search, ignoring accents, punctuation and word order
 - [ ] Sort by any column
 - [ ] Media keys and system media controls (KDE, GNOME, Windows)
-- [ ] Keyboard shortcuts
 - [ ] Favorites and playlists
 - [ ] Play counts and your most played songs
 - [ ] Home page with albums, artists, genres and years
