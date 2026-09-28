@@ -31,20 +31,42 @@ export class Queue<T> {
   }
 
   // Moves to the next item and returns it, or returns null at the end (without moving).
-  next(): T | null {
-    if (!this.hasNext) {
+  // Items for which `skip` returns true are stepped over, like files that can't play.
+  next(skip: (item: T) => boolean = () => false): T | null {
+    return this.#move(1, skip);
+  }
+
+  // Moves to the previous item and returns it, or returns null at the start (without
+  // moving). Items for which `skip` returns true are stepped over.
+  previous(skip: (item: T) => boolean = () => false): T | null {
+    return this.#move(-1, skip);
+  }
+
+  // Whether there is a next or previous item that `skip` doesn't step over.
+  hasNextMatching(skip: (item: T) => boolean): boolean {
+    return this.#find(1, skip) !== null;
+  }
+
+  hasPreviousMatching(skip: (item: T) => boolean): boolean {
+    return this.#find(-1, skip) !== null;
+  }
+
+  #move(step: 1 | -1, skip: (item: T) => boolean): T | null {
+    const position = this.#find(step, skip);
+    if (position === null) {
       return null;
     }
-    this.#position++;
+    this.#position = position;
     return this.current;
   }
 
-  // Moves to the previous item and returns it, or returns null at the start (without moving).
-  previous(): T | null {
-    if (!this.hasPrevious) {
-      return null;
+  // The position of the nearest item in direction `step` that isn't skipped, or null.
+  #find(step: 1 | -1, skip: (item: T) => boolean): number | null {
+    for (let i = this.#position + step; i >= 0 && i < this.#items.length; i += step) {
+      if (!skip(this.#items[i])) {
+        return i;
+      }
     }
-    this.#position--;
-    return this.current;
+    return null;
   }
 }
