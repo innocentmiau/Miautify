@@ -146,15 +146,23 @@ export class Player extends EventTarget {
   }
 
   toggle(): void {
-    if (!this.current) {
-      return;
-    }
     if (this.#audio.paused) {
-      this.#resume();
+      this.resume();
     } else {
-      this.#wantsToPlay = false;
-      this.#audio.pause();
+      this.pause();
     }
+  }
+
+  // Plays the current song from where it is. Does nothing without a song.
+  resume(): void {
+    if (this.current && this.#audio.paused) {
+      this.#resume();
+    }
+  }
+
+  pause(): void {
+    this.#wantsToPlay = false;
+    this.#audio.pause();
   }
 
   #load(song: Song, { autoplay = true } = {}): void {

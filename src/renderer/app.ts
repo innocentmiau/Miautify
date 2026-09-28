@@ -2,6 +2,7 @@ import { fallbackLanguage, initI18n } from "../shared/i18n.js";
 import type { Song } from "../shared/library.js";
 import { FolderTree } from "./folder-tree.js";
 import { buildFolderTree, type Folder, findFolder, folderOfSong, songsShown } from "./folders.js";
+import { connectMediaSession } from "./media-session.js";
 import { Player } from "./player.js";
 import { type Action, actionFor, type Shortcut, shortcuts } from "./shortcuts.js";
 import { SongList } from "./song-list.js";
@@ -266,6 +267,9 @@ seekSlider.addEventListener("keydown", (event) => {
 
 // Keyboard shortcuts (the table is in shortcuts.ts). One listener for the whole window.
 const seekStepSeconds = 5;
+
+// Media keys, headphone buttons and the system's media widget (see media-session.ts).
+connectMediaSession(player, seekStepSeconds);
 const volumeStep = 0.05;
 
 window.addEventListener("keydown", (event) => {
