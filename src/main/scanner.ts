@@ -1,45 +1,134 @@
 import { createHash } from "node:crypto";
-import { readdir } from "node:fs/promises";
+import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { parseFile } from "music-metadata";
 import type { Song } from "../shared/library.js";
 
+// What the scan cache stores per file: enough to tell whether the file changed (size and
+// modified time), plus the tags read from it last time.
+export interface CachedSong {
+  path: string;
+  size: number;
+  mtimeMs: number;
+  title?: string;
+  artist?: string;
+  album?: string;
+  durationSeconds?: number;
+}
+
+export interface ScanResult {
+  songs: Song[];
+  // New or changed files, whose tags were read again. To be saved in the cache.
+  changed: CachedSong[];
+  // Cached paths inside the folder whose file is gone. To be removed from the cache.
+  removed: string[];
+}
+
+type Tags = Pick<CachedSong, "title" | "artist" | "album" | "durationSeconds">;
+
+export interface ScanOptions {
+  // Reads one file's tags. A parameter so tests can count reads without real mp3 files.
+  readTags?: (file: string) => Promise<Tags>;
+  // Called as files are read: `done` of `total` files that needed their tags read.
+  onProgress?: (done: number, total: number) => void;
+}
+
 // numeric: true sorts "2 - Intro.mp3" before "10 - Outro.mp3".
 const collator = new Intl.Collator(undefined, { numeric: true });
 
-export async function scanFolder(folder: string): Promise<Song[]> {
-  const entries = await readdir(folder, {
-    recursive: true,
-    withFileTypes: true,
-  });
+// The folder's songs as the cache knows them, without touching the folder at all. Shown on
+// launch while the real scan checks for changes in the background.
+export function songsFromCache(folder: string, cache: ReadonlyMap<string, CachedSong>): Song[] {
+  return [...cache.values()]
+    .filter((entry) => isInside(entry.path, folder))
+    .sort((a, b) => collator.compare(a.path, b.path))
+    .map(toSong);
+}
+
+// Lists the folder and returns its songs. Files whose size and modified time match the
+// cache reuse the cached tags; only new or changed files are opened and read.
+export async function scanFolder(
+  folder: string,
+  cache: ReadonlyMap<string, CachedSong>,
+  { readTags = readTagsFromFile, onProgress }: ScanOptions = {},
+): Promise<ScanResult> {
+  const entries = await readdir(folder, { recursive: true, withFileTypes: true });
   const files = entries
     .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".mp3"))
     .map((entry) => path.join(entry.parentPath, entry.name))
     .sort(collator.compare);
 
-  // One file at a time keeps this simple. If big libraries are slow, reading a few files
-  // in parallel is the first thing to try.
+  // stat only reads the file system's bookkeeping, not the file, so it's cheap even for
+  // thousands of files. They run in parallel.
+  const stats = await Promise.all(files.map((file) => stat(file).catch(() => null)));
+
+  // First pass: which files need their tags read? Knowing the count up front is what
+  // makes "120 of 5,400" possible.
+  const isUnchanged = (file: string, index: number): boolean => {
+    const info = stats[index];
+    const entry = cache.get(file);
+    return !!info && !!entry && entry.size === info.size && entry.mtimeMs === info.mtimeMs;
+  };
+  const toRead = files.filter((file, index) => stats[index] && !isUnchanged(file, index)).length;
+
   const songs: Song[] = [];
-  for (const file of files) {
-    songs.push(await readSong(file));
+  const changed: CachedSong[] = [];
+  for (const [index, file] of files.entries()) {
+    const info = stats[index];
+    if (!info) {
+      continue; // Deleted between listing and stat.
+    }
+
+    let entry = cache.get(file);
+    if (!entry || !isUnchanged(file, index)) {
+      // One file at a time keeps this simple. If a first scan of a big library is slow,
+      // reading a few files in parallel is the first thing to try.
+      entry = { path: file, size: info.size, mtimeMs: info.mtimeMs, ...(await readTags(file)) };
+      changed.push(entry);
+      onProgress?.(changed.length, toRead);
+    }
+    songs.push(toSong(entry));
   }
-  return songs;
+
+  const found = new Set(files);
+  const removed = [...cache.keys()].filter((file) => isInside(file, folder) && !found.has(file));
+  return { songs, changed, removed };
 }
 
-async function readSong(file: string): Promise<Song> {
-  const song: Song = { id: songId(file), path: file, fileName: path.basename(file) };
+function toSong(entry: CachedSong): Song {
+  return {
+    id: songId(entry.path),
+    path: entry.path,
+    fileName: path.basename(entry.path),
+    title: entry.title,
+    artist: entry.artist,
+    album: entry.album,
+    durationSeconds: entry.durationSeconds,
+  };
+}
+
+async function readTagsFromFile(file: string): Promise<Tags> {
   try {
     // Covers are skipped: they are the biggest part of the tags and the list doesn't show them.
     const { common, format } = await parseFile(file, { skipCovers: true });
-    song.title = common.title;
-    song.artist = common.artist;
-    song.album = common.album;
-    song.durationSeconds = format.duration;
+    return {
+      title: common.title,
+      artist: common.artist,
+      album: common.album,
+      durationSeconds: format.duration,
+    };
   } catch (error) {
     // A broken or mislabeled file still shows up, by file name, instead of stopping the scan.
     console.warn(`Could not read tags from ${file}:`, error);
+    return {};
   }
-  return song;
+}
+
+// True if `file` is somewhere under `folder`. The separator matters: /music-old/a.mp3 is
+// not inside /music.
+function isInside(file: string, folder: string): boolean {
+  const prefix = folder.endsWith(path.sep) ? folder : folder + path.sep;
+  return file.startsWith(prefix);
 }
 
 // Same path, same id, so a rescan doesn't change the ids of songs that didn't move.

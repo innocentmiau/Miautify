@@ -1,4 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
+import type { CachedSong } from "./scanner.js";
 
 // Everything the app remembers between launches, by key, with the type of each value.
 // Adding a setting means adding a line here; a typo in a key is then a compile error.
@@ -12,10 +13,20 @@ export interface Settings {
 const migrations: string[] = [
   // 1: key/value settings, stored as JSON text.
   "CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL) STRICT",
+  // 2: scan cache, one row per mp3 file.
+  `CREATE TABLE songs (
+    path TEXT PRIMARY KEY,
+    size INTEGER NOT NULL,
+    mtime_ms REAL NOT NULL,
+    title TEXT,
+    artist TEXT,
+    album TEXT,
+    duration_seconds REAL
+  ) STRICT`,
 ];
 
 // The app's SQLite database. Lives in the app's data folder, never in the music folder:
-// deleting it loses settings, never music.
+// deleting it loses settings and the scan cache, never music.
 //
 // No Electron imports, so tests can open it on ":memory:" (see test/storage.test.ts).
 export class Storage {
@@ -44,6 +55,58 @@ export class Storage {
     this.#db.prepare("DELETE FROM settings WHERE key = ?").run(key);
   }
 
+  // Every cached song, by path. A few thousand rows load in milliseconds.
+  cachedSongs(): Map<string, CachedSong> {
+    const rows = this.#db.prepare("SELECT * FROM songs").all();
+    return new Map(
+      rows.map((row) => [
+        String(row.path),
+        {
+          path: String(row.path),
+          size: Number(row.size),
+          mtimeMs: Number(row.mtime_ms),
+          // SQL NULL comes back as null; the rest of the app uses undefined for "no tag".
+          title: (row.title as string | null) ?? undefined,
+          artist: (row.artist as string | null) ?? undefined,
+          album: (row.album as string | null) ?? undefined,
+          durationSeconds: (row.duration_seconds as number | null) ?? undefined,
+        },
+      ]),
+    );
+  }
+
+  // Saves the result of a scan: adds or updates the changed songs, deletes the removed
+  // paths. All in one transaction: thousands of writes in one go are much faster than one
+  // transaction each, and a crash can't leave the cache half updated.
+  saveScan(changed: readonly CachedSong[], removed: readonly string[]): void {
+    const upsert = this.#db.prepare(
+      `INSERT INTO songs (path, size, mtime_ms, title, artist, album, duration_seconds)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT (path) DO UPDATE SET
+         size = excluded.size, mtime_ms = excluded.mtime_ms, title = excluded.title,
+         artist = excluded.artist, album = excluded.album,
+         duration_seconds = excluded.duration_seconds`,
+    );
+    const remove = this.#db.prepare("DELETE FROM songs WHERE path = ?");
+
+    this.#transaction(() => {
+      for (const song of changed) {
+        upsert.run(
+          song.path,
+          song.size,
+          song.mtimeMs,
+          song.title ?? null,
+          song.artist ?? null,
+          song.album ?? null,
+          song.durationSeconds ?? null,
+        );
+      }
+      for (const file of removed) {
+        remove.run(file);
+      }
+    });
+  }
+
   close(): void {
     this.#db.close();
   }
@@ -57,15 +120,22 @@ export class Storage {
     for (let version = this.version; version < migrations.length; version++) {
       // Each migration runs in a transaction with its version bump, so a crash halfway
       // leaves the file on the old version instead of half upgraded.
-      this.#db.exec("BEGIN");
-      try {
+      this.#transaction(() => {
         this.#db.exec(migrations[version]);
         this.#db.exec(`PRAGMA user_version = ${version + 1}`);
-        this.#db.exec("COMMIT");
-      } catch (error) {
-        this.#db.exec("ROLLBACK");
-        throw error;
-      }
+      });
+    }
+  }
+
+  // Runs `work` so that either all of its writes happen or none do.
+  #transaction(work: () => void): void {
+    this.#db.exec("BEGIN");
+    try {
+      work();
+      this.#db.exec("COMMIT");
+    } catch (error) {
+      this.#db.exec("ROLLBACK");
+      throw error;
     }
   }
 }

@@ -17,15 +17,26 @@ const chooseButton = document.createElement("button");
 chooseButton.type = "button";
 chooseButton.textContent = t("library.chooseFolder");
 
+// Rescans the same folder, to pick up files added or changed since. Shown once a folder is open.
+const refreshButton = document.createElement("button");
+refreshButton.type = "button";
+refreshButton.className = "secondary";
+refreshButton.textContent = t("library.refresh");
+refreshButton.hidden = true;
+
 const folderLabel = document.createElement("span");
 folderLabel.className = "folder";
 
 const countLabel = document.createElement("span");
 countLabel.className = "count";
 
+// What's happening in the background: "Checking for changes..." or reading progress.
+const statusLabel = document.createElement("span");
+statusLabel.className = "status";
+
 const toolbar = getElement("toolbar");
 const content = getElement("content");
-toolbar.append(heading, chooseButton, folderLabel, countLabel);
+toolbar.append(heading, chooseButton, refreshButton, folderLabel, countLabel, statusLabel);
 
 const player = new Player();
 
@@ -129,7 +140,6 @@ player.addEventListener("time", () => {
 });
 
 chooseButton.addEventListener("click", async () => {
-  chooseButton.disabled = true;
   try {
     const folder = await window.miautify.chooseFolder();
     if (folder !== null) {
@@ -138,15 +148,16 @@ chooseButton.addEventListener("click", async () => {
     // null means cancelled: keep whatever was showing before.
   } catch (error) {
     console.error(error);
-  } finally {
-    chooseButton.disabled = false;
   }
+});
+
+refreshButton.addEventListener("click", () => {
+  void checkForChanges();
 });
 
 // On launch: open the folder from last time, and put the last song back in the player bar,
 // paused. Called from the end of this file, once everything above and below is defined.
 async function restoreLastSession(): Promise<void> {
-  chooseButton.disabled = true;
   try {
     const { folder, lastSongId } = await window.miautify.getStartupState();
     savedSongId = lastSongId;
@@ -154,41 +165,93 @@ async function restoreLastSession(): Promise<void> {
       showMessage(t("library.empty"));
       return;
     }
-
-    const songs = await openLibrary(folder);
-    // The song may have been deleted or moved since, then there's nothing to restore.
-    const index = songs?.findIndex((song) => song.id === lastSongId) ?? -1;
-    if (songs && index >= 0) {
-      player.selectFrom(songs, index);
-    }
+    await openLibrary(folder, lastSongId);
   } catch (error) {
     console.error(error);
     showMessage(t("library.empty"));
-  } finally {
-    chooseButton.disabled = false;
   }
 }
 
-// Scans the folder and lists its songs. Returns them, or null if the folder couldn't be read.
-async function openLibrary(folder: string): Promise<Song[] | null> {
+// Shows the folder's songs from the cache right away, then checks the folder for changes
+// in the background. Only a folder that was never scanned has to wait for the scan.
+async function openLibrary(folder: string, restoreSongId: string | null = null): Promise<void> {
   folderLabel.textContent = folder;
   folderLabel.title = folder;
-  countLabel.textContent = "";
-  showMessage(t("library.scanning"));
+  refreshButton.hidden = false;
+
+  const cached = await window.miautify.cachedSongs();
+  if (cached.length > 0) {
+    showLibrary(cached);
+    restoreSong(cached, restoreSongId);
+  } else {
+    listedSongs = [];
+    countLabel.textContent = "";
+    showMessage(t("library.scanning"));
+  }
+
+  const songs = await checkForChanges();
+  if (songs && cached.length === 0) {
+    restoreSong(songs, restoreSongId);
+  }
+}
+
+// Puts a song back in the player bar, paused, if it's in the list and nothing is loaded yet.
+// It may have been deleted or moved since, then there's nothing to restore.
+function restoreSong(songs: Song[], id: string | null): void {
+  const index = id === null ? -1 : songs.findIndex((song) => song.id === id);
+  if (index >= 0 && player.current === null) {
+    player.selectFrom(songs, index);
+  }
+}
+
+// Scans the chosen folder in the background. The list stays usable meanwhile, and is only
+// replaced if something changed. Returns the songs, or null if the folder couldn't be read.
+async function checkForChanges(): Promise<Song[] | null> {
+  // Both buttons wait for the scan to finish, so two scans can't overlap.
+  chooseButton.disabled = true;
+  refreshButton.disabled = true;
+  statusLabel.textContent = t("library.checking");
+  const stopListening = window.miautify.onScanProgress((done, total) => {
+    const progress = t("library.readingTags", { done, total });
+    statusLabel.textContent = progress;
+    if (listedSongs.length === 0) {
+      showMessage(progress); // Nothing listed yet: show it in the middle too.
+    }
+  });
 
   try {
-    const songs = await window.miautify.scanChosenFolder();
-    countLabel.textContent = t("library.songCount", { count: songs.length });
-    if (songs.length === 0) {
-      showMessage(t("library.noSongs"));
-    } else {
-      showSongs(songs);
+    const { songs, changed } = await window.miautify.scanChosenFolder();
+    if (changed || listedSongs.length === 0) {
+      showLibrary(songs, { keepScroll: true });
     }
     return songs;
   } catch (error) {
     console.error(error);
-    showMessage(t("library.scanFailed"));
+    if (listedSongs.length === 0) {
+      showMessage(t("library.scanFailed"));
+    }
     return null;
+  } finally {
+    stopListening();
+    statusLabel.textContent = "";
+    chooseButton.disabled = false;
+    refreshButton.disabled = false;
+  }
+}
+
+// Shows `songs` and their count. keepScroll keeps the list where it was, for updates the
+// user didn't ask for (like the background scan finding a new file).
+function showLibrary(songs: Song[], { keepScroll = false } = {}): void {
+  countLabel.textContent = t("library.songCount", { count: songs.length });
+  if (songs.length === 0) {
+    listedSongs = [];
+    showMessage(t("library.noSongs"));
+    return;
+  }
+  const scrollTop = content.scrollTop;
+  showSongs(songs);
+  if (keepScroll) {
+    content.scrollTop = scrollTop;
   }
 }
 

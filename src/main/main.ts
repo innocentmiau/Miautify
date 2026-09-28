@@ -2,9 +2,9 @@ import { stat } from "node:fs/promises";
 import path from "node:path";
 import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import { initI18n, pickLanguage } from "../shared/i18n.js";
-import { ipcChannels, type Song, type StartupState } from "../shared/library.js";
+import { ipcChannels, type ScanOutcome, type Song, type StartupState } from "../shared/library.js";
 import { handleMediaProtocol, registerMediaScheme, rememberSongs } from "./media.js";
-import { scanFolder } from "./scanner.js";
+import { scanFolder, songsFromCache } from "./scanner.js";
 import { Storage } from "./storage.js";
 
 // Opened when the app is ready (see the bottom of this file).
@@ -71,13 +71,42 @@ ipcMain.handle(ipcChannels.chooseFolder, async (event): Promise<string | null> =
   return chosenFolder;
 });
 
-ipcMain.handle(ipcChannels.scanChosenFolder, async (): Promise<Song[]> => {
+ipcMain.handle(ipcChannels.cachedSongs, (): Song[] => {
+  if (!chosenFolder) {
+    return [];
+  }
+  const songs = songsFromCache(chosenFolder, storage.cachedSongs());
+  // Playable right away. If a file is gone, the scan that follows takes it off the list.
+  rememberSongs(songs);
+  return songs;
+});
+
+ipcMain.handle(ipcChannels.scanChosenFolder, async (event): Promise<ScanOutcome> => {
   if (!chosenFolder) {
     throw new Error("No folder has been chosen yet.");
   }
-  const songs = await scanFolder(chosenFolder);
+  const started = performance.now();
+
+  // At most one progress message every 100 ms (plus the last one): the page only needs to
+  // redraw a counter, not receive thousands of messages.
+  let lastSent = 0;
+  const onProgress = (done: number, total: number) => {
+    const now = performance.now();
+    if (done === total || now - lastSent >= 100) {
+      lastSent = now;
+      event.sender.send(ipcChannels.scanProgress, done, total);
+    }
+  };
+
+  const { songs, changed, removed } = await scanFolder(chosenFolder, storage.cachedSongs(), {
+    onProgress,
+  });
+  storage.saveScan(changed, removed);
   rememberSongs(songs);
-  return songs;
+
+  const ms = Math.round(performance.now() - started);
+  console.info(`Scanned ${songs.length} songs in ${ms} ms (${changed.length} read from disk)`);
+  return { songs, changed: changed.length > 0 || removed.length > 0 };
 });
 
 ipcMain.on(ipcChannels.setLastSong, (_event, id: unknown) => {

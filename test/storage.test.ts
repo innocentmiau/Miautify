@@ -31,7 +31,7 @@ describe("Storage", () => {
 
       const second = new Storage(file);
       assert.equal(second.get("player.lastSongId"), "abc123");
-      assert.equal(second.version, 1); // Reopening doesn't run the migrations again.
+      assert.equal(second.version, 2); // Reopening doesn't run the migrations again.
       second.close();
     } finally {
       rmSync(folder, { recursive: true, force: true });
@@ -43,5 +43,33 @@ describe("Storage", () => {
     const folder = String.raw`C:\Músicas\"quoted" & 'single'`;
     storage.set("library.folder", folder);
     assert.equal(storage.get("library.folder"), folder);
+  });
+
+  it("saves scan results and removes deleted songs", () => {
+    const storage = new Storage(":memory:");
+    storage.saveScan(
+      [
+        { path: "/m/a.mp3", size: 10, mtimeMs: 1.5, title: "A", durationSeconds: 185.05 },
+        { path: "/m/b.mp3", size: 20, mtimeMs: 2 },
+      ],
+      [],
+    );
+    const cached = storage.cachedSongs();
+    assert.deepEqual(cached.get("/m/a.mp3"), {
+      path: "/m/a.mp3",
+      size: 10,
+      mtimeMs: 1.5,
+      title: "A",
+      artist: undefined,
+      album: undefined,
+      durationSeconds: 185.05,
+    });
+    // Missing tags come back as undefined, not null.
+    assert.equal(cached.get("/m/b.mp3")?.title, undefined);
+
+    storage.saveScan([{ path: "/m/a.mp3", size: 11, mtimeMs: 3, title: "A2" }], ["/m/b.mp3"]);
+    const updated = storage.cachedSongs();
+    assert.deepEqual([...updated.keys()], ["/m/a.mp3"]);
+    assert.equal(updated.get("/m/a.mp3")?.title, "A2");
   });
 });
