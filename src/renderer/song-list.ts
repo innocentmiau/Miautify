@@ -8,6 +8,8 @@ export interface SongListOptions {
   cells(song: Song): string[];
   // Whether a song gets the "playing" highlight.
   isPlaying(song: Song): boolean;
+  // Tooltip line for songs that failed to play.
+  unplayableLabel: string;
   // A song was double-clicked, by its position in the list.
   onPlay(index: number): void;
 }
@@ -145,8 +147,9 @@ export class SongList {
     row.dataset.index = String(index);
     row.dataset.songId = song.id;
     row.setAttribute("aria-rowindex", String(index + 2)); // The header is row 1.
-    row.title = song.path;
+    row.title = song.unplayable ? `${song.path}\n${this.#options.unplayableLabel}` : song.path;
     row.classList.toggle("playing", this.#options.isPlaying(song));
+    row.classList.toggle("unplayable", song.unplayable === true);
     const texts = this.#options.cells(song);
     for (const [i, cell] of [...row.children].entries()) {
       cell.textContent = texts[i];

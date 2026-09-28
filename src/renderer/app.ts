@@ -39,9 +39,14 @@ countLabel.className = "count";
 const statusLabel = document.createElement("span");
 statusLabel.className = "status";
 
+// Short-lived messages about problems, like a file that couldn't play (see showNotice).
+const noticeLabel = document.createElement("span");
+noticeLabel.className = "notice";
+noticeLabel.setAttribute("role", "status"); // Screen readers announce it when it changes.
+
 const toolbar = getElement("toolbar");
 const content = getElement("content");
-toolbar.append(heading, folderLabel, countLabel, statusLabel);
+toolbar.append(heading, folderLabel, countLabel, statusLabel, noticeLabel);
 
 const player = new Player();
 
@@ -127,6 +132,7 @@ const songList = new SongList(content, {
     formatDuration(song.durationSeconds),
   ],
   isPlaying: (song) => song.id === player.current?.id,
+  unplayableLabel: t("player.unplayable"),
   onPlay: (index) => player.playFrom(listedSongs, index),
 });
 
@@ -412,6 +418,15 @@ player.addEventListener("change", () => {
 
 player.addEventListener("volume", () => updateVolumeControl());
 
+// A song couldn't play: remember it (main saves it if the file still exists), mark its row,
+// and say so. The player has already moved on to the next song if it was playing.
+player.addEventListener("unplayable", (event) => {
+  const { song } = (event as CustomEvent<{ song: Song }>).detail;
+  window.miautify.markUnplayable(song.id);
+  songList.refresh();
+  showNotice(t("player.cantPlay", { name: song.title ?? song.fileName }));
+});
+
 player.addEventListener("time", () => {
   if (!draggingSeek) {
     showPosition(player.currentTime);
@@ -491,11 +506,15 @@ async function openLibrary(folder: string, restoreSongId: string | null = null):
   }
 }
 
-// Puts a song back in the player bar, paused, if nothing is loaded yet. Its queue is the
+// Puts a song back in the player bar, paused, if nothing is loaded yet and it can play. Its queue is the
 // list on screen if the song is in it (like double-clicking it there), otherwise the
 // folder it's in. It may have been deleted or moved since, then there's nothing to restore.
 function restoreSong(id: string | null): void {
   if (!tree || id === null || player.current !== null) {
+    return;
+  }
+  // A song known not to play isn't worth putting back.
+  if (tree.allSongs.some((song) => song.id === id && song.unplayable)) {
     return;
   }
   const shownIndex = listedSongs.findIndex((song) => song.id === id);
@@ -725,6 +744,17 @@ function updateVolumeControl(): void {
   volumeSlider.value = String(shown);
   volumeSlider.style.setProperty("--progress", `${shown * 100}%`);
   volumeSlider.setAttribute("aria-valuetext", percent.format(shown));
+}
+
+// Shows `text` in the toolbar for a few seconds. A newer notice replaces an older one.
+let noticeTimer: ReturnType<typeof setTimeout> | undefined;
+
+function showNotice(text: string): void {
+  noticeLabel.textContent = text;
+  clearTimeout(noticeTimer);
+  noticeTimer = setTimeout(() => {
+    noticeLabel.textContent = "";
+  }, 6000);
 }
 
 function saveVolume(): void {

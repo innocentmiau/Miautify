@@ -13,6 +13,8 @@
   --accent-hover: #45b0e5;
   /* Text and icons drawn on top of --accent. */
   --on-accent: #04131d;
+  /* Problems, like files that can't play. */
+  --danger: #f47171;
 }
 
 /* Keyboard focus rings follow the theme too. */
@@ -97,6 +99,16 @@ body {
 }
 
 .status {
+  font-size: 0.875rem;
+}
+
+/* A short message about something that went wrong, like a skipped file. */
+.notice {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--danger);
   font-size: 0.875rem;
 }
 
@@ -449,6 +461,23 @@ body {
 
 .song-row.playing {
   color: var(--accent);
+}
+
+/* A file that failed to play: red, with a "!" badge before the title. */
+.song-row.unplayable {
+  color: var(--danger);
+}
+
+.song-row.unplayable > div:first-child::before {
+  content: "!";
+  display: inline-block;
+  width: 1.2em;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--danger);
+  color: var(--background);
+  font-weight: 700;
+  text-align: center;
 }
 
 /* Long titles end in "..." instead of wrapping, since every row has the same height. */
