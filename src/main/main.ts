@@ -75,8 +75,13 @@ ipcMain.handle(ipcChannels.scanChosenFolder, async (): Promise<Song[]> => {
   if (!chosenFolder) {
     throw new Error("No folder has been chosen yet.");
   }
-  const songs = await scanFolder(chosenFolder);
+  const started = performance.now();
+  const { songs, changed, removed } = await scanFolder(chosenFolder, storage.cachedSongs());
+  storage.saveScan(changed, removed);
   rememberSongs(songs);
+
+  const ms = Math.round(performance.now() - started);
+  console.info(`Scanned ${songs.length} songs in ${ms} ms (${changed.length} read from disk)`);
   return songs;
 });
 
