@@ -25,6 +25,9 @@ async function createWindow(): Promise<void> {
     // styles.css, or the window flashes a different color on launch.
     backgroundColor: "#0b1724",
     autoHideMenuBar: true,
+    // Window and taskbar icon on Linux (Windows takes it from the installed .exe).
+    // Generated from assets/icon.svg by the build (scripts/icons.js).
+    icon: path.join(import.meta.dirname, "../icons/icon-512.png"),
     webPreferences: {
       preload: path.join(import.meta.dirname, "../preload/preload.cjs"),
     },

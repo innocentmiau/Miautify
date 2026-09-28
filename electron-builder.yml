@@ -11,6 +11,10 @@ files:
   - dist/**
   - package.json
 
+# The app icon, generated from assets/icon.svg by `npm run build` (scripts/icons.js).
+# electron-builder makes Windows' .ico and the Linux icon sizes from this one PNG.
+icon: dist/icons/icon-512.png
+
 win:
   target:
     - target: nsis

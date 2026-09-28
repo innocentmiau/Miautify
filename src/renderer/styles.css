@@ -42,8 +42,16 @@ body {
 }
 
 .toolbar h1 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin: 0;
   font-size: 1.25rem;
+}
+
+.logo {
+  width: 28px;
+  height: 28px;
 }
 
 /* Text buttons: "primary" is filled with the accent, "secondary" is outlined. */

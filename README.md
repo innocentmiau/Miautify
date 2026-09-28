@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/icon.svg" width="128" height="128" alt="Miautify icon">
+</p>
+
 # Miautify
 
 [![CI](https://github.com/innocentmiau/Miautify/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/innocentmiau/Miautify/actions/workflows/ci.yml)
