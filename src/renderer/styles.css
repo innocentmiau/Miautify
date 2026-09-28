@@ -194,8 +194,10 @@ body {
   text-align: right;
 }
 
-/* A thin track, filled up to --progress (set from app.ts), with a knob on hover. */
-.seek {
+/* Timeline and volume: a thin track, filled up to --progress (set from app.ts), with a
+   knob on hover. */
+.seek,
+.volume {
   flex: 1;
   height: 4px;
   margin: 0;
@@ -210,7 +212,9 @@ body {
 }
 
 .seek:hover,
-.seek:focus-visible {
+.seek:focus-visible,
+.volume:hover,
+.volume:focus-visible {
   background: linear-gradient(
     to right,
     var(--accent) var(--progress, 0%),
@@ -218,7 +222,8 @@ body {
   );
 }
 
-.seek::-webkit-slider-thumb {
+.seek::-webkit-slider-thumb,
+.volume::-webkit-slider-thumb {
   width: 12px;
   height: 12px;
   appearance: none;
@@ -228,12 +233,26 @@ body {
 }
 
 .seek:hover::-webkit-slider-thumb,
-.seek:focus-visible::-webkit-slider-thumb {
+.seek:focus-visible::-webkit-slider-thumb,
+.volume:hover::-webkit-slider-thumb,
+.volume:focus-visible::-webkit-slider-thumb {
   opacity: 1;
 }
 
 .seek:disabled {
   cursor: default;
+}
+
+.volume-control {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+}
+
+.volume {
+  flex: none;
+  width: 110px;
 }
 
 .toggle {

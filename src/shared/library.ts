@@ -18,6 +18,9 @@ export interface StartupState {
   // The folder chosen last time, or null if there is none or it no longer exists.
   folder: string | null;
   lastSongId: string | null;
+  // Null when never set, so the page uses its default.
+  volume: number | null;
+  muted: boolean;
 }
 
 export interface ScanOutcome {
@@ -40,6 +43,8 @@ export interface MiautifyApi {
   onScanProgress(listener: (done: number, total: number) => void): () => void;
   // Remembers the song in the player bar, to show it again on the next launch.
   setLastSong(id: string): void;
+  // Remembers the volume slider position (0 to 1) and mute.
+  saveVolume(level: number, muted: boolean): void;
 }
 
 export const ipcChannels = {
@@ -49,6 +54,7 @@ export const ipcChannels = {
   scanChosenFolder: "library:scan-chosen-folder",
   scanProgress: "library:scan-progress",
   setLastSong: "player:set-last-song",
+  saveVolume: "player:save-volume",
 } as const;
 
 // Audio reaches the page through this custom URL scheme, served by the main process

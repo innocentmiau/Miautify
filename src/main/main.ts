@@ -51,6 +51,8 @@ ipcMain.handle(ipcChannels.getStartupState, async (): Promise<StartupState> => {
   return {
     folder: chosenFolder ?? null,
     lastSongId: storage.get("player.lastSongId") ?? null,
+    volume: storage.get("player.volume") ?? null,
+    muted: storage.get("player.muted") ?? false,
   };
 });
 
@@ -113,6 +115,13 @@ ipcMain.on(ipcChannels.setLastSong, (_event, id: unknown) => {
   // Anything from the page is checked before it's stored.
   if (typeof id === "string") {
     storage.set("player.lastSongId", id);
+  }
+});
+
+ipcMain.on(ipcChannels.saveVolume, (_event, level: unknown, muted: unknown) => {
+  if (typeof level === "number" && level >= 0 && level <= 1 && typeof muted === "boolean") {
+    storage.set("player.volume", level);
+    storage.set("player.muted", muted);
   }
 });
 
