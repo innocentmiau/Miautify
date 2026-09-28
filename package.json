@@ -1,6 +1,6 @@
 {
   "name": "miautify",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A music player that points at a folder and plays it.",
   "license": "MIT",
   "author": "André Leandro",
