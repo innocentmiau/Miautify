@@ -1,13 +1,89 @@
 # Miautify
 
 [![CI](https://github.com/innocentmiau/Miautify/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/innocentmiau/Miautify/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/innocentmiau/Miautify?include_prereleases&label=release)](https://github.com/innocentmiau/Miautify/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-A music player for Linux and Windows that points at a folder of mp3 files and
-plays it. No server, no import step, and it never renames your files.
+A music player for Linux and Windows that points at a folder of mp3 files and plays it.
+No server, no import step, and it never renames or moves your files.
 
-Right now it's an empty window: the player is being built feature by feature.
+> **Early development.** Miautify is being rebuilt feature by feature. The releases so far
+> are test builds; the first real release will be v0.1.0.
 
-## Run from source
+## Features
+
+- **Your folder is the library.** Pick a folder and Miautify finds every mp3 in it,
+  subfolders included, and reads the title, artist, album and length from the tags.
+  Songs without tags show their file name.
+- **Opens straight into your music.** It remembers the folder and the last song, which
+  waits in the player bar, paused, ready to play.
+- **Fast with big libraries.** Tags are cached, so launching shows your list right away
+  and only new or changed files are read, in the background. A Refresh button picks up
+  changes without restarting.
+- **Playback:** double-click a song to play it, then play and pause, next and previous,
+  and a timeline to jump anywhere in the song. When a song ends, the next one starts.
+- **Volume and mute**, remembered between launches. The slider follows how loudness is
+  heard, so the whole range is useful.
+- **Your files stay yours.** Miautify only reads the music folder. Its own data (settings
+  and the tag cache) lives in the app's data folder: `~/.config/Miautify` on Linux,
+  `%APPDATA%\Miautify` on Windows.
+
+## Install
+
+Download the latest build from the [Releases page](https://github.com/innocentmiau/Miautify/releases).
+
+- **Windows:** run `Miautify-Setup-<version>.exe`. The builds aren't code-signed yet, so
+  Windows SmartScreen will warn: click **More info**, then **Run anyway**.
+- **Linux:** download `Miautify-<version>.AppImage`, make it executable and run it:
+
+  ```sh
+  chmod +x Miautify-*.AppImage
+  ./Miautify-*.AppImage
+  ```
+
+  AppImages need FUSE 2 (`fuse2` on Arch-based distros, `libfuse2` on Debian and Ubuntu).
+
+## Usage
+
+1. Click **Choose music folder** and pick the folder with your mp3s.
+2. Double-click a song to play it. The songs after it in the list play next.
+3. Use the player bar at the bottom to pause, skip, jump in the song or change the volume.
+4. Added or changed files? Click **Refresh**.
+
+## Roadmap
+
+Done, with the date each one landed:
+
+- [x] Pick a folder, scan it and its subfolders for mp3s, and list them with their tags (2026-09-25)
+- [x] Windows installer and Linux AppImage, built automatically for each release (2026-09-26)
+- [x] Double-click to play, play and pause (2026-09-26)
+- [x] Timeline with elapsed and total time, click or drag to jump (2026-09-27)
+- [x] Ocean blue look (2026-09-27)
+- [x] Next and previous, and auto-advance to the next song (2026-09-27)
+- [x] Remember the folder and the last song between launches (2026-09-27)
+- [x] Tag cache for fast launches, background check for changes, Refresh button (2026-09-28)
+- [x] Volume and mute, remembered between launches (2026-09-28)
+
+Planned:
+
+- [ ] Smooth scrolling through thousands of songs
+- [ ] Album covers
+- [ ] Search, ignoring accents, punctuation and word order
+- [ ] Sort by any column
+- [ ] Media keys and system media controls (KDE, GNOME, Windows)
+- [ ] Keyboard shortcuts
+- [ ] Favorites and playlists
+- [ ] Play counts and your most played songs
+- [ ] Home page with albums, artists, genres and years
+- [ ] Shuffle without repeating recent songs, and repeat
+- [ ] Crossfade and an equalizer
+- [ ] Settings page, color themes and a language picker (Portuguese first)
+- [ ] Discord "Listening to" status
+- [ ] Edit tags (one song, or a whole album or artist at once)
+- [ ] Keep favorites and play counts when a file is renamed or moved
+- [ ] More formats: flac, ogg and m4a
+
+## Build from source
 
 Needs [Node.js](https://nodejs.org/) 22.12 or newer.
 
@@ -18,9 +94,13 @@ npm start
 
 Other scripts:
 
+- `npm test`: run the unit tests.
 - `npm run typecheck`: check the TypeScript types.
 - `npm run check`: lint and check formatting with [Biome](https://biomejs.dev/).
 - `npm run format`: fix formatting.
+- `npm run dist`: build an installer for your OS into `release/`.
+
+Built with Electron, TypeScript, SQLite (`node:sqlite`), music-metadata and i18next.
 
 ## License
 
