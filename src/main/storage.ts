@@ -28,6 +28,8 @@ const migrations: string[] = [
     album TEXT,
     duration_seconds REAL
   ) STRICT`,
+  // 3: files that failed to play. Existing rows start as playable (0).
+  "ALTER TABLE songs ADD COLUMN unplayable INTEGER NOT NULL DEFAULT 0",
 ];
 
 // The app's SQLite database. Lives in the app's data folder, never in the music folder:
@@ -75,6 +77,7 @@ export class Storage {
           artist: (row.artist as string | null) ?? undefined,
           album: (row.album as string | null) ?? undefined,
           durationSeconds: (row.duration_seconds as number | null) ?? undefined,
+          unplayable: row.unplayable === 1 ? true : undefined,
         },
       ]),
     );
@@ -90,7 +93,9 @@ export class Storage {
        ON CONFLICT (path) DO UPDATE SET
          size = excluded.size, mtime_ms = excluded.mtime_ms, title = excluded.title,
          artist = excluded.artist, album = excluded.album,
-         duration_seconds = excluded.duration_seconds`,
+         duration_seconds = excluded.duration_seconds,
+         -- The file changed, so it gets another chance to play.
+         unplayable = 0`,
     );
     const remove = this.#db.prepare("DELETE FROM songs WHERE path = ?");
 
@@ -110,6 +115,11 @@ export class Storage {
         remove.run(file);
       }
     });
+  }
+
+  // Remembers that a file failed to play, until it changes (see saveScan).
+  markUnplayable(path: string): void {
+    this.#db.prepare("UPDATE songs SET unplayable = 1 WHERE path = ?").run(path);
   }
 
   close(): void {

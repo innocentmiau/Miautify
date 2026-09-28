@@ -93,4 +93,11 @@ describe("scanFolder", () => {
       ["A", "B"],
     );
   });
+
+  it("keeps the unplayable mark of unchanged files", async () => {
+    const first = await scanFolder(music, new Map(), { readTags: fakeReader().readTags });
+    const marked = first.changed.map((entry) => ({ ...entry, unplayable: true }));
+    const second = await scanFolder(music, cacheOf(marked), { readTags: fakeReader().readTags });
+    assert.ok(second.songs.every((song) => song.unplayable === true));
+  });
 });

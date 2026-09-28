@@ -3,7 +3,7 @@ import path from "node:path";
 import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import { initI18n, pickLanguage } from "../shared/i18n.js";
 import { ipcChannels, type ScanOutcome, type Song, type StartupState } from "../shared/library.js";
-import { handleMediaProtocol, registerMediaScheme, rememberSongs } from "./media.js";
+import { handleMediaProtocol, knownSong, registerMediaScheme, rememberSongs } from "./media.js";
 import { scanFolder, songsFromCache } from "./scanner.js";
 import { Storage } from "./storage.js";
 
@@ -130,6 +130,24 @@ ipcMain.on(ipcChannels.saveShowAllSongs, (_event, showAll: unknown) => {
   if (typeof showAll === "boolean") {
     storage.set("library.showAllSongs", showAll);
   }
+});
+
+ipcMain.on(ipcChannels.markUnplayable, (_event, id: unknown) => {
+  // The page sends an id, never a path; only songs from a scan can be marked.
+  const song = typeof id === "string" ? knownSong(id) : undefined;
+  if (!song) {
+    return;
+  }
+  // The page can't tell a broken file from one deleted since the scan (both just fail to
+  // load). Only a file that's still there is remembered as broken; a missing one is
+  // dropped by the next scan anyway.
+  void stat(song.path).then(
+    () => {
+      song.unplayable = true;
+      storage.markUnplayable(song.path);
+    },
+    () => {},
+  );
 });
 
 async function isFolder(folder: string): Promise<boolean> {

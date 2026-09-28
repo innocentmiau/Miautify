@@ -19,6 +19,7 @@ const api: MiautifyApi = {
   setLastSong: (id) => ipcRenderer.send(ipcChannels.setLastSong, id),
   saveVolume: (level, muted) => ipcRenderer.send(ipcChannels.saveVolume, level, muted),
   saveShowAllSongs: (showAll) => ipcRenderer.send(ipcChannels.saveShowAllSongs, showAll),
+  markUnplayable: (id) => ipcRenderer.send(ipcChannels.markUnplayable, id),
 };
 
 contextBridge.exposeInMainWorld("miautify", api);

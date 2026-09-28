@@ -11,6 +11,8 @@ export interface Song {
   artist?: string;
   album?: string;
   durationSeconds?: number;
+  // Set once playing it failed (the file can't be decoded). Cleared when the file changes.
+  unplayable?: boolean;
 }
 
 // What the page needs to restore the last session on launch.
@@ -48,6 +50,8 @@ export interface MiautifyApi {
   saveVolume(level: number, muted: boolean): void;
   // Remembers the "Include subfolders" toggle of the folder view.
   saveShowAllSongs(showAll: boolean): void;
+  // Remembers that a song failed to play, so it's skipped until its file changes.
+  markUnplayable(id: string): void;
 }
 
 export const ipcChannels = {
@@ -59,6 +63,7 @@ export const ipcChannels = {
   setLastSong: "player:set-last-song",
   saveVolume: "player:save-volume",
   saveShowAllSongs: "library:save-show-all-songs",
+  markUnplayable: "library:mark-unplayable",
 } as const;
 
 // Audio reaches the page through this custom URL scheme, served by the main process

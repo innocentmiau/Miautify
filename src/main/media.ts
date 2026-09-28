@@ -8,6 +8,10 @@ import { mediaScheme, type Song } from "../shared/library.js";
 // here, so a song keeps streaming after the user picks a different folder.
 const knownSongs = new Map<string, Song>();
 
+export function knownSong(id: string): Song | undefined {
+  return knownSongs.get(id);
+}
+
 export function rememberSongs(songs: Song[]): void {
   for (const song of songs) {
     knownSongs.set(song.id, song);
@@ -45,7 +49,13 @@ export function handleMediaProtocol(): void {
 // that part of the file. (Electron's own file loader answers 200 without Content-Range,
 // which makes <audio> treat the song as not seekable.)
 async function serveFile(file: string, rangeHeader: string | null): Promise<Response> {
-  const { size } = await stat(file);
+  let size: number;
+  try {
+    ({ size } = await stat(file));
+  } catch {
+    // Deleted or moved since the scan. The page sees a failed load and skips the song.
+    return new Response(null, { status: 404 });
+  }
   const headers = {
     "Accept-Ranges": "bytes",
     "Content-Type": "audio/mpeg",

@@ -14,6 +14,8 @@ export interface CachedSong {
   artist?: string;
   album?: string;
   durationSeconds?: number;
+  // Playing it failed. Only comes from the cache: a re-read file starts out playable.
+  unplayable?: boolean;
 }
 
 export interface ScanResult {
@@ -104,6 +106,7 @@ function toSong(entry: CachedSong): Song {
     artist: entry.artist,
     album: entry.album,
     durationSeconds: entry.durationSeconds,
+    unplayable: entry.unplayable,
   };
 }
 

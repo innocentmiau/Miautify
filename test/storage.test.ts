@@ -31,7 +31,7 @@ describe("Storage", () => {
 
       const second = new Storage(file);
       assert.equal(second.get("player.lastSongId"), "abc123");
-      assert.equal(second.version, 2); // Reopening doesn't run the migrations again.
+      assert.equal(second.version, 3); // Reopening doesn't run the migrations again.
       second.close();
     } finally {
       rmSync(folder, { recursive: true, force: true });
@@ -63,6 +63,7 @@ describe("Storage", () => {
       artist: undefined,
       album: undefined,
       durationSeconds: 185.05,
+      unplayable: undefined,
     });
     // Missing tags come back as undefined, not null.
     assert.equal(cached.get("/m/b.mp3")?.title, undefined);
@@ -71,5 +72,16 @@ describe("Storage", () => {
     const updated = storage.cachedSongs();
     assert.deepEqual([...updated.keys()], ["/m/a.mp3"]);
     assert.equal(updated.get("/m/a.mp3")?.title, "A2");
+  });
+
+  it("remembers unplayable files until they change", () => {
+    const storage = new Storage(":memory:");
+    storage.saveScan([{ path: "/m/a.mp3", size: 10, mtimeMs: 1 }], []);
+    storage.markUnplayable("/m/a.mp3");
+    assert.equal(storage.cachedSongs().get("/m/a.mp3")?.unplayable, true);
+
+    // The file changed (the scanner re-read it): it gets another chance.
+    storage.saveScan([{ path: "/m/a.mp3", size: 12, mtimeMs: 2 }], []);
+    assert.equal(storage.cachedSongs().get("/m/a.mp3")?.unplayable, undefined);
   });
 });
