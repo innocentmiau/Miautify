@@ -13,8 +13,9 @@ export interface Folder {
   folders: Folder[];
   // Songs directly in this folder (not in subfolders), in scan order.
   songs: Song[];
-  // Songs in this folder and everything below it.
-  totalSongs: number;
+  // Songs in this folder and everything below it, in scan order (sorted by path, like the
+  // flat list of the whole library).
+  allSongs: Song[];
 }
 
 // numeric: true sorts "Disc 2" before "Disc 10".
@@ -32,7 +33,7 @@ export function buildFolderTree(root: string, songs: readonly Song[]): Folder {
     const segments = relative.split(/[\\/]+/).slice(0, -1);
 
     let folder = rootFolder;
-    folder.totalSongs++;
+    folder.allSongs.push(song);
     for (const [depth, name] of segments.entries()) {
       let child = folder.folders.find((candidate) => candidate.name === name);
       if (!child) {
@@ -40,13 +41,20 @@ export function buildFolderTree(root: string, songs: readonly Song[]): Folder {
         folder.folders.push(child);
       }
       folder = child;
-      folder.totalSongs++;
+      folder.allSongs.push(song);
     }
     folder.songs.push(song);
   }
 
   sortFolders(rootFolder);
   return rootFolder;
+}
+
+// The songs a folder shows, which are also the songs that play from it: only its own
+// songs, or with `showAll`, everything in it and its subfolders. The song list and the
+// queue both come from here, so what's on screen is exactly what auto-advance plays.
+export function songsShown(folder: Folder, showAll: boolean): Song[] {
+  return showAll ? folder.allSongs : folder.songs;
 }
 
 // Follows `segments` down from `root`. Stops at the deepest folder that still exists, so a
@@ -78,7 +86,7 @@ export function folderOfSong(root: Folder, songId: string): Folder | null {
 }
 
 function newFolder(name: string, segments: string[]): Folder {
-  return { name, segments, folders: [], songs: [], totalSongs: 0 };
+  return { name, segments, folders: [], songs: [], allSongs: [] };
 }
 
 function sortFolders(folder: Folder): void {

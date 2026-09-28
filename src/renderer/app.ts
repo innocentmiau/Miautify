@@ -1,7 +1,7 @@
 import { fallbackLanguage, initI18n } from "../shared/i18n.js";
 import type { Song } from "../shared/library.js";
 import { FolderTree } from "./folder-tree.js";
-import { buildFolderTree, type Folder, findFolder, folderOfSong } from "./folders.js";
+import { buildFolderTree, type Folder, findFolder, folderOfSong, songsShown } from "./folders.js";
 import { Player } from "./player.js";
 import { SongList } from "./song-list.js";
 
@@ -58,6 +58,34 @@ let listedSongs: Song[] = [];
 const breadcrumb = document.createElement("nav");
 breadcrumb.className = "breadcrumb";
 breadcrumb.setAttribute("aria-label", t("library.folderPath"));
+
+// "Include subfolders": list the songs of every subfolder too, instead of subfolder tiles.
+// Saved, so it stays how you left it.
+let showAllSongs = false;
+
+const allSongsCheckbox = document.createElement("input");
+allSongsCheckbox.type = "checkbox";
+// A switch, not a plain checkbox, for screen readers too: it takes effect right away.
+allSongsCheckbox.setAttribute("role", "switch");
+allSongsCheckbox.addEventListener("change", () => {
+  showAllSongs = allSongsCheckbox.checked;
+  window.miautify.saveShowAllSongs(showAllSongs);
+  if (openFolder) {
+    showFolder(openFolder);
+  }
+});
+
+const allSongsText = document.createElement("span");
+allSongsText.textContent = t("library.includeSubfolders");
+
+const allSongsToggle = document.createElement("label");
+allSongsToggle.className = "switch";
+allSongsToggle.append(allSongsCheckbox, allSongsText);
+
+// The path on the left, the toggle on the right.
+const folderHeader = document.createElement("div");
+folderHeader.className = "folder-header";
+folderHeader.append(breadcrumb, allSongsToggle);
 
 const folderGrid = document.createElement("div");
 folderGrid.className = "folder-grid";
@@ -254,8 +282,16 @@ refreshButton.addEventListener("click", () => {
 // paused. Called from the end of this file, once everything above and below is defined.
 async function restoreLastSession(): Promise<void> {
   try {
-    const { folder, lastSongId, volume, muted } = await window.miautify.getStartupState();
+    const {
+      folder,
+      lastSongId,
+      volume,
+      muted,
+      showAllSongs: showAll,
+    } = await window.miautify.getStartupState();
     savedSongId = lastSongId;
+    showAllSongs = showAll;
+    allSongsCheckbox.checked = showAll;
     if (volume !== null) {
       player.volume = volume;
     }
@@ -300,17 +336,24 @@ async function openLibrary(folder: string, restoreSongId: string | null = null):
 }
 
 // Puts a song back in the player bar, paused, if nothing is loaded yet. Its queue is the
-// folder it's in, like when it was double-clicked there. It may have been deleted or moved
-// since, then there's nothing to restore.
+// list on screen if the song is in it (like double-clicking it there), otherwise the
+// folder it's in. It may have been deleted or moved since, then there's nothing to restore.
 function restoreSong(id: string | null): void {
-  const folder = tree && id !== null ? folderOfSong(tree, id) : null;
-  if (!folder || player.current !== null) {
+  if (!tree || id === null || player.current !== null) {
     return;
   }
-  player.selectFrom(
-    folder.songs,
-    folder.songs.findIndex((song) => song.id === id),
-  );
+  const shownIndex = listedSongs.findIndex((song) => song.id === id);
+  if (shownIndex >= 0) {
+    player.selectFrom(listedSongs, shownIndex);
+    return;
+  }
+  const folder = folderOfSong(tree, id);
+  if (folder) {
+    player.selectFrom(
+      folder.songs,
+      folder.songs.findIndex((song) => song.id === id),
+    );
+  }
 }
 
 // Scans the chosen folder in the background. The list stays usable meanwhile, and is only
@@ -370,21 +413,22 @@ function showLibrary(songs: Song[], { keepScroll = false } = {}): void {
 function showFolder(folder: Folder, { keepScroll = false } = {}): void {
   const scrollTop = content.scrollTop;
   openFolder = folder;
-  listedSongs = folder.songs;
+  // What's listed is what plays: double-clicking queues from this same list.
+  listedSongs = songsShown(folder, showAllSongs);
   folderTree.setOpen(folder);
   renderBreadcrumb(folder);
   renderFolderGrid(folder);
 
-  const parts: HTMLElement[] = [breadcrumb];
-  if (folder.folders.length > 0) {
+  const parts: HTMLElement[] = [folderHeader];
+  if (!showAllSongs && folder.folders.length > 0) {
     parts.push(folderGrid);
   }
-  if (folder.songs.length > 0) {
+  if (listedSongs.length > 0) {
     parts.push(songList.element);
   }
   content.replaceChildren(...parts);
   // After it's on the page: the list measures where it is to know which rows to draw.
-  songList.setSongs(folder.songs);
+  songList.setSongs(listedSongs);
   content.scrollTop = keepScroll ? scrollTop : 0;
 }
 
@@ -439,7 +483,7 @@ function renderFolderGrid(folder: Folder): void {
     name.textContent = child.name;
     const count = document.createElement("span");
     count.className = "count";
-    count.textContent = t("library.songCount", { count: child.totalSongs });
+    count.textContent = t("library.songCount", { count: child.allSongs.length });
     const text = document.createElement("span");
     text.className = "text";
     text.append(name, count);

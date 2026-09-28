@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { buildFolderTree, findFolder, folderOfSong } from "../src/renderer/folders.ts";
+import { buildFolderTree, findFolder, folderOfSong, songsShown } from "../src/renderer/folders.ts";
+import { Queue } from "../src/renderer/queue.ts";
 import type { Song } from "../src/shared/library.ts";
 
 function song(path: string): Song {
@@ -49,9 +50,9 @@ describe("buildFolderTree", () => {
   });
 
   it("counts every song below a folder", () => {
-    assert.equal(root.totalSongs, 6);
-    assert.equal(findFolder(root, ["Artist A"]).totalSongs, 4);
-    assert.equal(findFolder(root, ["Artist A", "Album 2"]).totalSongs, 3);
+    assert.equal(root.allSongs.length, 6);
+    assert.equal(findFolder(root, ["Artist A"]).allSongs.length, 4);
+    assert.equal(findFolder(root, ["Artist A", "Album 2"]).allSongs.length, 3);
   });
 
   it("handles Windows paths and a root ending in a separator", () => {
@@ -66,7 +67,7 @@ describe("buildFolderTree", () => {
 
   it("gives an empty tree for no songs", () => {
     const tree = buildFolderTree("/music", []);
-    assert.equal(tree.totalSongs, 0);
+    assert.equal(tree.allSongs.length, 0);
     assert.deepEqual(tree.folders, []);
   });
 });
@@ -87,5 +88,61 @@ describe("folderOfSong", () => {
     assert.equal(folderOfSong(root, "/music/Artist A/Album 2/Disc 1/1.mp3")?.name, "Disc 1");
     assert.equal(folderOfSong(root, "/music/loose.mp3"), root);
     assert.equal(folderOfSong(root, "missing"), null);
+  });
+});
+
+// What auto-advance plays: double-click the song at `start` in the list a folder shows,
+// then let every song end. The queue is built the same way the app builds it.
+function playedFrom(songs: Song[], start: number): string[] {
+  const queue = new Queue(songs.slice(start));
+  const played = [queue.current.fileName];
+  for (let song = queue.next(); song; song = queue.next()) {
+    played.push(song.fileName);
+  }
+  return played;
+}
+
+describe("songsShown and what auto-advance plays", () => {
+  // A folder with its own songs AND subfolders, the case where the toggle matters.
+  const tree = buildFolderTree("/m", [
+    song("/m/Album/1 - Own.mp3"),
+    song("/m/Album/2 - Own.mp3"),
+    song("/m/Album/Bonus/1 - Bonus.mp3"),
+    song("/m/Album/Bonus/Live/1 - Live.mp3"),
+    song("/m/Other/1 - Elsewhere.mp3"),
+  ]);
+  const album = findFolder(tree, ["Album"]);
+
+  it("shows only the folder's own songs when showAll is off", () => {
+    assert.deepEqual(
+      songsShown(album, false).map((s) => s.fileName),
+      ["1 - Own.mp3", "2 - Own.mp3"],
+    );
+  });
+
+  it("shows the folder and all its subfolders, in path order, when showAll is on", () => {
+    assert.deepEqual(
+      songsShown(album, true).map((s) => s.fileName),
+      ["1 - Own.mp3", "2 - Own.mp3", "1 - Bonus.mp3", "1 - Live.mp3"],
+    );
+  });
+
+  it("off: plays to the end of the folder's own songs, never into subfolders", () => {
+    assert.deepEqual(playedFrom(songsShown(album, false), 0), ["1 - Own.mp3", "2 - Own.mp3"]);
+  });
+
+  it("on: plays on into the subfolders, and stops at the end of the folder", () => {
+    assert.deepEqual(playedFrom(songsShown(album, true), 1), [
+      "2 - Own.mp3",
+      "1 - Bonus.mp3",
+      "1 - Live.mp3",
+    ]);
+  });
+
+  it("never plays songs from a sibling folder, in either mode", () => {
+    for (const showAll of [false, true]) {
+      const played = playedFrom(songsShown(album, showAll), 0);
+      assert.ok(!played.includes("1 - Elsewhere.mp3"));
+    }
   });
 });
