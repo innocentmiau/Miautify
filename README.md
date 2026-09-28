@@ -73,6 +73,8 @@ Download the latest build from the [Releases page](https://github.com/innocentmi
 
 ## Roadmap
 
+What changed in each release is in the [changelog](CHANGELOG.md).
+
 Done, with the date each one landed:
 
 - [x] Pick a folder, scan it and its subfolders for mp3s, and list them with their tags (2026-09-25)
