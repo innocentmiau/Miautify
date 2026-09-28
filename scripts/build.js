@@ -3,8 +3,11 @@
 // Type checking is separate: `npm run typecheck`.
 import { cpSync, rmSync } from "node:fs";
 import { build } from "esbuild";
+import { buildIcons } from "./icons.js";
 
 rmSync("dist", { recursive: true, force: true });
+
+await buildIcons();
 
 await build({
   entryPoints: ["src/main/main.ts"],
