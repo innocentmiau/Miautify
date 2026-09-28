@@ -636,3 +636,53 @@ body {
   color: var(--text-muted);
   font-size: 0.875rem;
 }
+
+/* The "Keyboard shortcuts" window. */
+.shortcuts-dialog {
+  width: min(460px, 90vw);
+  padding: 20px 24px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.shortcuts-dialog::backdrop {
+  background: rgb(0 0 0 / 50%);
+}
+
+.shortcuts-dialog h2 {
+  margin: 0 0 16px;
+  font-size: 1.1rem;
+}
+
+/* Keys on the left, what they do on the right. */
+.shortcuts-dialog dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 10px 20px;
+  align-items: center;
+  margin: 0 0 20px;
+}
+
+.shortcuts-dialog dt {
+  display: flex;
+  gap: 4px;
+}
+
+.shortcuts-dialog dd {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+kbd {
+  min-width: 1.2em;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--background);
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: center;
+}

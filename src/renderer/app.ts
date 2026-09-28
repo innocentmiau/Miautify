@@ -3,6 +3,7 @@ import type { Song } from "../shared/library.js";
 import { FolderTree } from "./folder-tree.js";
 import { buildFolderTree, type Folder, findFolder, folderOfSong, songsShown } from "./folders.js";
 import { Player } from "./player.js";
+import { type Action, actionFor, type Shortcut, shortcuts } from "./shortcuts.js";
 import { SongList } from "./song-list.js";
 
 const language = new URLSearchParams(location.search).get("lang") ?? fallbackLanguage;
@@ -103,7 +104,14 @@ foldersHeading.textContent = t("menu.folders");
 
 const menuActions = document.createElement("div");
 menuActions.className = "menu-actions";
-menuActions.append(chooseButton, refreshButton);
+// Opens the list of keyboard shortcuts (also opened with "?").
+const shortcutsButton = document.createElement("button");
+shortcutsButton.type = "button";
+shortcutsButton.className = "secondary";
+shortcutsButton.textContent = t("shortcuts.title");
+shortcutsButton.addEventListener("click", () => showShortcuts());
+
+menuActions.append(chooseButton, refreshButton, shortcutsButton);
 
 const menu = document.createElement("div");
 menu.className = "menu";
@@ -239,6 +247,154 @@ seekSlider.addEventListener("change", () => {
   draggingSeek = false;
   player.seek(Number(seekSlider.value));
 });
+
+// On the focused timeline, the arrows jump 5 seconds like everywhere else, instead of the
+// slider's own step (1% of the song, which is 37 seconds on an hour-long one).
+seekSlider.addEventListener("keydown", (event) => {
+  const direction = { ArrowLeft: -1, ArrowRight: 1 }[event.key];
+  if (direction && !event.ctrlKey && !event.altKey && !event.metaKey) {
+    event.preventDefault();
+    player.seek(player.currentTime + direction * seekStepSeconds);
+  }
+});
+
+// Keyboard shortcuts (the table is in shortcuts.ts). One listener for the whole window.
+const seekStepSeconds = 5;
+const volumeStep = 0.05;
+
+window.addEventListener("keydown", (event) => {
+  const action = actionFor(event);
+  if (!action || event.defaultPrevented || !shortcutApplies(action, event.target)) {
+    return;
+  }
+  // Stops the key's normal effect too. For Space that matters: without this, Space would
+  // also "click" the focused button, so after clicking Next, Space would skip again.
+  event.preventDefault();
+  runShortcut(action);
+});
+
+// The mouse's back button goes up one folder, like Backspace.
+window.addEventListener("mouseup", (event) => {
+  if (event.button === 3) {
+    event.preventDefault();
+    runShortcut("parentFolder");
+  }
+});
+
+// Keeps shortcuts out of the way where the key already means something.
+function shortcutApplies(action: Action, target: EventTarget | null): boolean {
+  if (shortcutsDialog.open) {
+    return false; // The shortcuts window is up: only Escape (which closes it) applies.
+  }
+  if (!(target instanceof HTMLElement)) {
+    return true;
+  }
+  if (target.isContentEditable || target instanceof HTMLTextAreaElement) {
+    return false;
+  }
+  if (target instanceof HTMLInputElement) {
+    if (target.type === "range") {
+      // A focused slider keeps its arrows (the timeline's are handled above).
+      return !["seekBack", "seekForward"].includes(action);
+    }
+    if (target.type === "checkbox") {
+      return action !== "togglePlay"; // Space toggles the switch.
+    }
+    return false; // Text fields: every key is typing.
+  }
+  return true;
+}
+
+function runShortcut(action: Action): void {
+  switch (action) {
+    case "togglePlay":
+      player.toggle();
+      break;
+    case "seekBack":
+      player.seek(player.currentTime - seekStepSeconds);
+      break;
+    case "seekForward":
+      player.seek(player.currentTime + seekStepSeconds);
+      break;
+    case "previous":
+      player.previous();
+      break;
+    case "next":
+      player.next();
+      break;
+    case "volumeUp":
+    case "volumeDown":
+      player.muted = false;
+      player.volume += action === "volumeUp" ? volumeStep : -volumeStep;
+      saveVolume();
+      break;
+    case "toggleMute":
+      player.muted = !player.muted;
+      saveVolume();
+      break;
+    case "parentFolder":
+      if (tree && openFolder && openFolder.segments.length > 0) {
+        showFolder(findFolder(tree, openFolder.segments.slice(0, -1)));
+      }
+      break;
+    case "showShortcuts":
+      showShortcuts();
+      break;
+  }
+}
+
+// The "Keyboard shortcuts" window: a native <dialog>, so Escape closes it and focus stays
+// inside it while it's open.
+const shortcutsDialog = document.createElement("dialog");
+shortcutsDialog.className = "shortcuts-dialog";
+document.body.append(shortcutsDialog);
+
+function showShortcuts(): void {
+  const title = document.createElement("h2");
+  title.textContent = t("shortcuts.title");
+
+  const list = document.createElement("dl");
+  for (const shortcut of shortcuts) {
+    const keys = document.createElement("dt");
+    keys.append(...keyLabels(shortcut));
+    const description = document.createElement("dd");
+    description.textContent = t(`shortcuts.${shortcut.action}`);
+    list.append(keys, description);
+  }
+
+  const close = document.createElement("button");
+  close.type = "button";
+  close.className = "primary";
+  close.textContent = t("shortcuts.close");
+  close.addEventListener("click", () => shortcutsDialog.close());
+
+  shortcutsDialog.replaceChildren(title, list, close);
+  shortcutsDialog.showModal();
+}
+
+// A shortcut's keys as <kbd> elements: Ctrl, then the key. Key names are translated
+// (German keyboards say "Strg", not "Ctrl").
+function keyLabels(shortcut: Shortcut): HTMLElement[] {
+  const names: string[] = shortcut.ctrl ? [t("keys.ctrl")] : [];
+  const arrows: Record<string, string> = {
+    ArrowLeft: "←",
+    ArrowRight: "→",
+    ArrowUp: "↑",
+    ArrowDown: "↓",
+  };
+  if (shortcut.key === " ") {
+    names.push(t("keys.space"));
+  } else if (shortcut.key === "Backspace") {
+    names.push(t("keys.backspace"));
+  } else {
+    names.push(arrows[shortcut.key] ?? shortcut.key.toUpperCase());
+  }
+  return names.map((name) => {
+    const kbd = document.createElement("kbd");
+    kbd.textContent = name;
+    return kbd;
+  });
+}
 
 // The id last sent to be remembered, so it's only sent when the song actually changes.
 let savedSongId: string | null = null;
@@ -426,7 +582,14 @@ function showFolder(folder: Folder, { keepScroll = false } = {}): void {
   if (listedSongs.length > 0) {
     parts.push(songList.element);
   }
+  // Taking an element off the page drops its keyboard focus, even if it's put straight
+  // back. Give focus back afterwards, so for example the "Include subfolders" switch keeps
+  // it when toggled with Space.
+  const focused = document.activeElement;
   content.replaceChildren(...parts);
+  if (focused instanceof HTMLElement && focused.isConnected && focused !== document.activeElement) {
+    focused.focus({ preventScroll: true });
+  }
   // After it's on the page: the list measures where it is to know which rows to draw.
   songList.setSongs(listedSongs);
   content.scrollTop = keepScroll ? scrollTop : 0;

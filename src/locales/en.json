@@ -39,5 +39,24 @@
     "folders": "Folders",
     "expand": "Show subfolders",
     "collapse": "Hide subfolders"
+  },
+  "shortcuts": {
+    "title": "Keyboard shortcuts",
+    "close": "Close",
+    "togglePlay": "Play or pause",
+    "seekBack": "Back 5 seconds",
+    "seekForward": "Forward 5 seconds",
+    "previous": "Previous song",
+    "next": "Next song",
+    "volumeUp": "Volume up",
+    "volumeDown": "Volume down",
+    "toggleMute": "Mute or unmute",
+    "parentFolder": "Go up one folder (also the mouse back button)",
+    "showShortcuts": "Show this list"
+  },
+  "keys": {
+    "ctrl": "Ctrl",
+    "space": "Space",
+    "backspace": "Backspace"
   }
 }
