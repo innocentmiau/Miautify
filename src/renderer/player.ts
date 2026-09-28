@@ -11,6 +11,8 @@ import { clampLevel, defaultLevel, levelToGain } from "./volume.js";
 // - "time": the position or the duration changed. Fires a few times per second while
 //   playing, so it's kept separate from "change", which does more work in the UI.
 // - "volume": the volume level or mute changed.
+// - "unplayable": a song couldn't be played (detail: { song }). It's marked, and if it
+//   was meant to play, the next playable song starts instead.
 //
 // Sound path: <audio> -> Web Audio gain node (volume) -> speakers. Crossfade, EQ and
 // ducking will be more nodes in this chain, which is why volume doesn't just use the
@@ -18,6 +20,9 @@ import { clampLevel, defaultLevel, levelToGain } from "./volume.js";
 export class Player extends EventTarget {
   #audio = new Audio();
   #queue: Queue<Song> | null = null;
+  // Whether the current song is meant to be playing (as opposed to loaded paused), so a
+  // failure knows whether to move on to the next song.
+  #wantsToPlay = false;
   #level = defaultLevel;
   #muted = false;
   // Created on first play (see #connectAudio).
@@ -39,6 +44,7 @@ export class Player extends EventTarget {
         this.#changed();
       }
     });
+    this.#audio.addEventListener("error", () => this.#failed());
     for (const event of ["timeupdate", "durationchange", "seeking"]) {
       this.#audio.addEventListener(event, () => this.dispatchEvent(new Event("time")));
     }
@@ -48,12 +54,13 @@ export class Player extends EventTarget {
     return this.#queue?.current ?? null;
   }
 
+  // Whether there's a playable song after or before the current one.
   get hasNext(): boolean {
-    return this.#queue?.hasNext ?? false;
+    return this.#queue?.hasNextMatching(isUnplayable) ?? false;
   }
 
   get hasPrevious(): boolean {
-    return this.#queue?.hasPrevious ?? false;
+    return this.#queue?.hasPreviousMatching(isUnplayable) ?? false;
   }
 
   get isPlaying(): boolean {
@@ -100,8 +107,16 @@ export class Player extends EventTarget {
 
   // Starts a new queue: `songs[start]` and every song after it, in order.
   playFrom(songs: readonly Song[], start: number): void {
-    this.#queue = new Queue(songs.slice(start));
-    this.#load(this.#queue.current);
+    const queue = new Queue(songs.slice(start));
+    if (isUnplayable(queue.current)) {
+      // Known not to play: say so, and start at the next song that can.
+      this.#announceUnplayable(queue.current);
+      if (!queue.next(isUnplayable)) {
+        return; // Nothing after it can play either: leave the player as it was.
+      }
+    }
+    this.#queue = queue;
+    this.#load(queue.current);
   }
 
   // Same queue as playFrom, but paused: the song shows in the player bar, ready to play.
@@ -112,7 +127,7 @@ export class Player extends EventTarget {
 
   // Returns false (and does nothing) at the end of the queue.
   next(): boolean {
-    const song = this.#queue?.next();
+    const song = this.#queue?.next(isUnplayable);
     if (!song) {
       return false;
     }
@@ -122,7 +137,7 @@ export class Player extends EventTarget {
 
   // Returns false (and does nothing) at the start of the queue.
   previous(): boolean {
-    const song = this.#queue?.previous();
+    const song = this.#queue?.previous(isUnplayable);
     if (!song) {
       return false;
     }
@@ -137,11 +152,13 @@ export class Player extends EventTarget {
     if (this.#audio.paused) {
       this.#resume();
     } else {
+      this.#wantsToPlay = false;
       this.#audio.pause();
     }
   }
 
   #load(song: Song, { autoplay = true } = {}): void {
+    this.#wantsToPlay = autoplay;
     this.#audio.src = songUrl(song.id);
     if (autoplay) {
       this.#resume();
@@ -150,13 +167,39 @@ export class Player extends EventTarget {
   }
 
   #resume(): void {
+    this.#wantsToPlay = true;
     this.#connectAudio();
     this.#audio.play().catch((error: unknown) => {
-      // Starting another song before this one loaded cancels this play() on purpose.
-      if (!(error instanceof DOMException && error.name === "AbortError")) {
+      // AbortError: starting another song before this one loaded cancels this play() on
+      // purpose. NotSupportedError: the file can't play, handled by #failed().
+      const expected = ["AbortError", "NotSupportedError"];
+      if (!(error instanceof DOMException && expected.includes(error.name))) {
         console.error(error);
       }
     });
+  }
+
+  // The <audio> element couldn't load or decode the current song.
+  #failed(): void {
+    const song = this.current;
+    if (!song || this.#audio.error?.code === MediaError.MEDIA_ERR_ABORTED) {
+      return; // Aborted: a different song was loaded on purpose, nothing failed.
+    }
+    this.#announceUnplayable(song);
+    if (this.#wantsToPlay && this.next()) {
+      return; // Moved on to the next playable song.
+    }
+    // Stays on this song, e.g. when it was the last in the queue. A failed <audio> doesn't
+    // mark itself as paused, so without this the bar would keep showing "Pause".
+    this.#wantsToPlay = false;
+    this.#audio.pause();
+    this.#changed();
+  }
+
+  // Marks the song (so queues skip it) and tells the page, which saves it and says so.
+  #announceUnplayable(song: Song): void {
+    song.unplayable = true;
+    this.dispatchEvent(new CustomEvent("unplayable", { detail: { song } }));
   }
 
   // Builds the Web Audio chain the first time something plays. Browsers only let an audio
@@ -191,4 +234,8 @@ export class Player extends EventTarget {
   #changed(): void {
     this.dispatchEvent(new Event("change"));
   }
+}
+
+function isUnplayable(song: Song): boolean {
+  return song.unplayable === true;
 }
