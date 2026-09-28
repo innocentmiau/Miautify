@@ -15,8 +15,15 @@ document.title = t("app.name");
 
 // Elements are created here rather than written in index.html, so every visible string
 // comes from the translation files.
+// The app icon next to the name (generated from assets/icon.svg by the build). Empty alt:
+// the name right after it already says what it is.
+const logo = document.createElement("img");
+logo.src = "../icons/icon-128.png";
+logo.alt = "";
+logo.className = "logo";
+
 const heading = document.createElement("h1");
-heading.textContent = t("app.name");
+heading.append(logo, t("app.name"));
 
 const chooseButton = document.createElement("button");
 chooseButton.type = "button";
