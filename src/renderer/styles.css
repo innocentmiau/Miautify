@@ -110,6 +110,91 @@ body {
   color: var(--text-muted);
 }
 
+/* "Music › Artist › Album" above the folder's contents. */
+.breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 12px 12px 4px;
+  font-size: 1.1rem;
+}
+
+.breadcrumb button {
+  padding: 2px 4px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.breadcrumb button:hover {
+  color: var(--text);
+}
+
+.breadcrumb .current {
+  padding: 2px 4px;
+  font-weight: 600;
+}
+
+.breadcrumb .separator {
+  color: var(--text-muted);
+}
+
+/* Subfolders as tiles, as many per row as fit. */
+.folder-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+  padding: 8px 16px 16px;
+}
+
+.folder-tile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  /* Double-clicking would otherwise select the folder's name. */
+  user-select: none;
+}
+
+.folder-tile:hover {
+  border-color: var(--text-muted);
+}
+
+.folder-tile svg {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  fill: var(--accent);
+}
+
+.folder-tile .text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.folder-tile .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-tile .count {
+  font-size: 0.8rem;
+}
+
 /* Header and rows share the same columns: title, artist, album, duration. */
 .song-list-header,
 .song-row {

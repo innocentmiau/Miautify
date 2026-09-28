@@ -1,5 +1,6 @@
 import { fallbackLanguage, initI18n } from "../shared/i18n.js";
 import type { Song } from "../shared/library.js";
+import { buildFolderTree, type Folder, findFolder, folderOfSong } from "./folders.js";
 import { Player } from "./player.js";
 import { SongList } from "./song-list.js";
 
@@ -41,9 +42,23 @@ toolbar.append(heading, chooseButton, refreshButton, folderLabel, countLabel, st
 
 const player = new Player();
 
-// The songs in the list, in the order shown. Double-clicking one queues it and every song
-// after it.
+// The chosen music folder, its songs as a tree of folders, and the folder open on screen.
+// `tree` is null while nothing is shown yet (never scanned, or no songs).
+let libraryRoot = "";
+let tree: Folder | null = null;
+let openFolder: Folder | null = null;
+
+// The open folder's own songs, in the order shown. Double-clicking one queues it and every
+// song after it, so a folder plays like a playlist.
 let listedSongs: Song[] = [];
+
+// Above the songs: the path to the open folder, then its subfolders.
+const breadcrumb = document.createElement("nav");
+breadcrumb.className = "breadcrumb";
+breadcrumb.setAttribute("aria-label", t("library.folderPath"));
+
+const folderGrid = document.createElement("div");
+folderGrid.className = "folder-grid";
 
 const songList = new SongList(content, {
   columns: [t("song.title"), t("song.artist"), t("song.album"), t("song.duration")],
@@ -67,6 +82,8 @@ const volumeHighIconPath =
   "M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z";
 const volumeLowIconPath =
   "M18.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z";
+const folderIconPath =
+  "M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z";
 const volumeOffIconPath =
   "M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3 3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4 9.91 6.09 12 8.18V4z";
 
@@ -233,12 +250,15 @@ async function openLibrary(folder: string, restoreSongId: string | null = null):
   folderLabel.textContent = folder;
   folderLabel.title = folder;
   refreshButton.hidden = false;
+  libraryRoot = folder;
+  openFolder = null; // A new library opens at its top folder.
 
   const cached = await window.miautify.cachedSongs();
   if (cached.length > 0) {
     showLibrary(cached);
-    restoreSong(cached, restoreSongId);
+    restoreSong(restoreSongId);
   } else {
+    tree = null;
     listedSongs = [];
     countLabel.textContent = "";
     showMessage(t("library.scanning"));
@@ -246,17 +266,22 @@ async function openLibrary(folder: string, restoreSongId: string | null = null):
 
   const songs = await checkForChanges();
   if (songs && cached.length === 0) {
-    restoreSong(songs, restoreSongId);
+    restoreSong(restoreSongId);
   }
 }
 
-// Puts a song back in the player bar, paused, if it's in the list and nothing is loaded yet.
-// It may have been deleted or moved since, then there's nothing to restore.
-function restoreSong(songs: Song[], id: string | null): void {
-  const index = id === null ? -1 : songs.findIndex((song) => song.id === id);
-  if (index >= 0 && player.current === null) {
-    player.selectFrom(songs, index);
+// Puts a song back in the player bar, paused, if nothing is loaded yet. Its queue is the
+// folder it's in, like when it was double-clicked there. It may have been deleted or moved
+// since, then there's nothing to restore.
+function restoreSong(id: string | null): void {
+  const folder = tree && id !== null ? folderOfSong(tree, id) : null;
+  if (!folder || player.current !== null) {
+    return;
   }
+  player.selectFrom(
+    folder.songs,
+    folder.songs.findIndex((song) => song.id === id),
+  );
 }
 
 // Scans the chosen folder in the background. The list stays usable meanwhile, and is only
@@ -269,20 +294,20 @@ async function checkForChanges(): Promise<Song[] | null> {
   const stopListening = window.miautify.onScanProgress((done, total) => {
     const progress = t("library.readingTags", { done, total });
     statusLabel.textContent = progress;
-    if (listedSongs.length === 0) {
-      showMessage(progress); // Nothing listed yet: show it in the middle too.
+    if (tree === null) {
+      showMessage(progress); // Nothing shown yet: show it in the middle too.
     }
   });
 
   try {
     const { songs, changed } = await window.miautify.scanChosenFolder();
-    if (changed || listedSongs.length === 0) {
+    if (changed || tree === null) {
       showLibrary(songs, { keepScroll: true });
     }
     return songs;
   } catch (error) {
     console.error(error);
-    if (listedSongs.length === 0) {
+    if (tree === null) {
       showMessage(t("library.scanFailed"));
     }
     return null;
@@ -294,24 +319,110 @@ async function checkForChanges(): Promise<Song[] | null> {
   }
 }
 
-// Shows `songs` and their count. keepScroll keeps the list where it was, for updates the
-// user didn't ask for (like the background scan finding a new file).
+// Shows the library's songs as folders, and their total count. keepScroll stays in the same
+// folder at the same scroll position, for updates the user didn't ask for (like the
+// background scan finding a new file).
 function showLibrary(songs: Song[], { keepScroll = false } = {}): void {
   countLabel.textContent = t("library.songCount", { count: songs.length });
   if (songs.length === 0) {
+    tree = null;
     listedSongs = [];
     showMessage(t("library.noSongs"));
     return;
   }
-  listedSongs = songs;
-  songList.setSongs(songs);
-  if (!songList.element.isConnected) {
-    content.replaceChildren(songList.element);
+  tree = buildFolderTree(libraryRoot, songs);
+  // Stay in the open folder, or its nearest parent if it was deleted since.
+  showFolder(findFolder(tree, openFolder?.segments ?? []), { keepScroll });
+}
+
+// Opens a folder: its path at the top, its subfolders, then its own songs.
+function showFolder(folder: Folder, { keepScroll = false } = {}): void {
+  const scrollTop = content.scrollTop;
+  openFolder = folder;
+  listedSongs = folder.songs;
+  renderBreadcrumb(folder);
+  renderFolderGrid(folder);
+
+  const parts: HTMLElement[] = [breadcrumb];
+  if (folder.folders.length > 0) {
+    parts.push(folderGrid);
   }
-  // The list element is reused, so it stays where it was scrolled unless told otherwise.
-  if (!keepScroll) {
-    content.scrollTop = 0;
+  if (folder.songs.length > 0) {
+    parts.push(songList.element);
   }
+  content.replaceChildren(...parts);
+  // After it's on the page: the list measures where it is to know which rows to draw.
+  songList.setSongs(folder.songs);
+  content.scrollTop = keepScroll ? scrollTop : 0;
+}
+
+// "Music › Artist › Album": every part but the last opens that folder.
+function renderBreadcrumb(folder: Folder): void {
+  if (!tree) {
+    return;
+  }
+  const parts: HTMLElement[] = [];
+  const names = [tree.name, ...folder.segments];
+  for (const [depth, name] of names.entries()) {
+    if (depth > 0) {
+      const separator = document.createElement("span");
+      separator.className = "separator";
+      separator.setAttribute("aria-hidden", "true");
+      separator.textContent = "›";
+      parts.push(separator);
+    }
+    if (depth === names.length - 1) {
+      const current = document.createElement("span");
+      current.className = "current";
+      current.setAttribute("aria-current", "location");
+      current.textContent = name;
+      parts.push(current);
+    } else {
+      const link = document.createElement("button");
+      link.type = "button";
+      link.textContent = name;
+      const segments = folder.segments.slice(0, depth);
+      link.addEventListener("click", () => {
+        if (tree) {
+          showFolder(findFolder(tree, segments));
+        }
+      });
+      parts.push(link);
+    }
+  }
+  breadcrumb.replaceChildren(...parts);
+}
+
+// One tile per subfolder: icon, name and how many songs it holds (including its own
+// subfolders). Double-click or Enter opens it; single click is kept free, like for songs.
+function renderFolderGrid(folder: Folder): void {
+  const tiles = folder.folders.map((child) => {
+    const tile = document.createElement("button");
+    tile.type = "button";
+    tile.className = "folder-tile";
+    tile.title = t("library.openFolderHint");
+
+    const name = document.createElement("span");
+    name.className = "name";
+    name.textContent = child.name;
+    const count = document.createElement("span");
+    count.className = "count";
+    count.textContent = t("library.songCount", { count: child.totalSongs });
+    const text = document.createElement("span");
+    text.className = "text";
+    text.append(name, count);
+
+    tile.append(icon(folderIconPath), text);
+    tile.addEventListener("dblclick", () => showFolder(child));
+    tile.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        showFolder(child);
+      }
+    });
+    return tile;
+  });
+  folderGrid.replaceChildren(...tiles);
 }
 
 function showMessage(text: string): void {
