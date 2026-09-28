@@ -12,7 +12,9 @@
     "scanFailed": "Could not read this folder.",
     "noSongs": "No mp3 files in this folder.",
     "songCount_one": "{{count, number}} song",
-    "songCount_other": "{{count, number}} songs"
+    "songCount_other": "{{count, number}} songs",
+    "folderPath": "Folder path",
+    "openFolderHint": "Double-click to open"
   },
   "song": {
     "title": "Title",
