@@ -15,10 +15,14 @@ export function rememberSongs(songs: Song[]): void {
 }
 
 // Must run before the app is ready. `stream` lets <audio> start playing before the whole
-// response has arrived.
+// response has arrived. `corsEnabled` lets responses opt in to being read by the page
+// (see the Access-Control-Allow-Origin header below).
 export function registerMediaScheme(): void {
   protocol.registerSchemesAsPrivileged([
-    { scheme: mediaScheme, privileges: { standard: true, secure: true, stream: true } },
+    {
+      scheme: mediaScheme,
+      privileges: { standard: true, secure: true, stream: true, corsEnabled: true },
+    },
   ]);
 }
 
@@ -42,7 +46,14 @@ export function handleMediaProtocol(): void {
 // which makes <audio> treat the song as not seekable.)
 async function serveFile(file: string, rangeHeader: string | null): Promise<Response> {
   const { size } = await stat(file);
-  const headers = { "Accept-Ranges": "bytes", "Content-Type": "audio/mpeg" };
+  const headers = {
+    "Accept-Ranges": "bytes",
+    "Content-Type": "audio/mpeg",
+    // The page is a different origin (file://). Without this header, Web Audio treats the
+    // song as unreadable and plays silence. Only songs from a scan are served at all, so
+    // allowing any origin here doesn't expose anything else.
+    "Access-Control-Allow-Origin": "*",
+  };
 
   if (rangeHeader === null) {
     return new Response(fileStream(file, 0, size - 1), {

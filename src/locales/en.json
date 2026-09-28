@@ -26,6 +26,9 @@
     "pause": "Pause",
     "next": "Next",
     "seek": "Seek",
-    "position": "{{elapsed}} of {{total}}"
+    "position": "{{elapsed}} of {{total}}",
+    "volume": "Volume",
+    "mute": "Mute",
+    "unmute": "Unmute"
   }
 }
