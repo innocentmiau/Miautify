@@ -18,7 +18,9 @@ No server, no import step, and it never renames or moves your files.
 - **Folders work like playlists.** Opening a folder shows its subfolders at the top and
   its own songs below. Double-click a subfolder to go in, and use the path at the top to
   go back up. Playing a song plays through the rest of that folder. The main menu on the
-  left edge opens when you hover it and shows all your folders as a tree.
+  left edge opens when you hover it and shows all your folders as a tree. Turn on
+  **Include subfolders** to list (and play) every song in a folder and its subfolders
+  together instead.
 - **Opens straight into your music.** It remembers the folder and the last song, which
   waits in the player bar, paused, ready to play.
 - **Fast with big libraries.** Tags are cached, so launching shows your list right away
@@ -73,10 +75,10 @@ Done, with the date each one landed:
 - [x] Smooth scrolling through thousands of songs (2026-09-28)
 - [x] Browse by folder: a folder shows its subfolders above its songs, like a playlist (2026-09-28)
 - [x] Main menu on the left edge with the folder tree, opens when you hover it (2026-09-28)
+- [x] "Include subfolders" switch: list and play every song in a folder and its subfolders together (2026-09-28)
 
 Planned:
 
-- [ ] Option to list every song in a folder and its subfolders together
 - [ ] Album covers
 - [ ] Search, ignoring accents, punctuation and word order
 - [ ] Sort by any column

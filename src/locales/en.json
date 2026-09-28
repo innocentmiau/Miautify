@@ -14,7 +14,8 @@
     "songCount_one": "{{count, number}} song",
     "songCount_other": "{{count, number}} songs",
     "folderPath": "Folder path",
-    "openFolderHint": "Double-click to open"
+    "openFolderHint": "Double-click to open",
+    "includeSubfolders": "Include subfolders"
   },
   "song": {
     "title": "Title",

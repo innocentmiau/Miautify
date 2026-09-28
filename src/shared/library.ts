@@ -21,6 +21,7 @@ export interface StartupState {
   // Null when never set, so the page uses its default.
   volume: number | null;
   muted: boolean;
+  showAllSongs: boolean;
 }
 
 export interface ScanOutcome {
@@ -45,6 +46,8 @@ export interface MiautifyApi {
   setLastSong(id: string): void;
   // Remembers the volume slider position (0 to 1) and mute.
   saveVolume(level: number, muted: boolean): void;
+  // Remembers the "Include subfolders" toggle of the folder view.
+  saveShowAllSongs(showAll: boolean): void;
 }
 
 export const ipcChannels = {
@@ -55,6 +58,7 @@ export const ipcChannels = {
   scanProgress: "library:scan-progress",
   setLastSong: "player:set-last-song",
   saveVolume: "player:save-volume",
+  saveShowAllSongs: "library:save-show-all-songs",
 } as const;
 
 // Audio reaches the page through this custom URL scheme, served by the main process

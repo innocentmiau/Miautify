@@ -53,6 +53,7 @@ ipcMain.handle(ipcChannels.getStartupState, async (): Promise<StartupState> => {
     lastSongId: storage.get("player.lastSongId") ?? null,
     volume: storage.get("player.volume") ?? null,
     muted: storage.get("player.muted") ?? false,
+    showAllSongs: storage.get("library.showAllSongs") ?? false,
   };
 });
 
@@ -122,6 +123,12 @@ ipcMain.on(ipcChannels.saveVolume, (_event, level: unknown, muted: unknown) => {
   if (typeof level === "number" && level >= 0 && level <= 1 && typeof muted === "boolean") {
     storage.set("player.volume", level);
     storage.set("player.muted", muted);
+  }
+});
+
+ipcMain.on(ipcChannels.saveShowAllSongs, (_event, showAll: unknown) => {
+  if (typeof showAll === "boolean") {
+    storage.set("library.showAllSongs", showAll);
   }
 });
 

@@ -262,14 +262,68 @@ body {
   color: var(--text-muted);
 }
 
-/* "Music › Artist › Album" above the folder's contents. */
+/* Above the folder's contents: the path on the left, the toggle on the right. */
+.folder-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px 4px 12px;
+}
+
+/* "Music › Artist › Album". */
 .breadcrumb {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 2px;
-  padding: 12px 12px 4px;
   font-size: 1.1rem;
+}
+
+/* A checkbox drawn as a sliding switch: the track is the checkbox itself, the knob is its
+   ::before, which moves right when checked. */
+.switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.switch input {
+  position: relative;
+  width: 32px;
+  height: 18px;
+  margin: 0;
+  flex: none;
+  appearance: none;
+  border-radius: 9px;
+  background: var(--border);
+  cursor: pointer;
+  transition: background 150ms;
+}
+
+.switch input::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--text);
+  transition: transform 150ms;
+}
+
+.switch input:checked {
+  background: var(--accent);
+}
+
+.switch input:checked::before {
+  transform: translateX(14px);
 }
 
 .breadcrumb button {
