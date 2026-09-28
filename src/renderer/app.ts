@@ -17,6 +17,13 @@ const chooseButton = document.createElement("button");
 chooseButton.type = "button";
 chooseButton.textContent = t("library.chooseFolder");
 
+// Rescans the same folder, to pick up files added or changed since. Shown once a folder is open.
+const refreshButton = document.createElement("button");
+refreshButton.type = "button";
+refreshButton.className = "secondary";
+refreshButton.textContent = t("library.refresh");
+refreshButton.hidden = true;
+
 const folderLabel = document.createElement("span");
 folderLabel.className = "folder";
 
@@ -25,7 +32,7 @@ countLabel.className = "count";
 
 const toolbar = getElement("toolbar");
 const content = getElement("content");
-toolbar.append(heading, chooseButton, folderLabel, countLabel);
+toolbar.append(heading, chooseButton, refreshButton, folderLabel, countLabel);
 
 const player = new Player();
 
@@ -129,7 +136,7 @@ player.addEventListener("time", () => {
 });
 
 chooseButton.addEventListener("click", async () => {
-  chooseButton.disabled = true;
+  setBusy(true);
   try {
     const folder = await window.miautify.chooseFolder();
     if (folder !== null) {
@@ -139,14 +146,32 @@ chooseButton.addEventListener("click", async () => {
   } catch (error) {
     console.error(error);
   } finally {
-    chooseButton.disabled = false;
+    setBusy(false);
   }
 });
+
+refreshButton.addEventListener("click", async () => {
+  setBusy(true);
+  try {
+    const folder = folderLabel.textContent;
+    if (folder) {
+      await openLibrary(folder, { refreshing: true });
+    }
+  } finally {
+    setBusy(false);
+  }
+});
+
+// While a folder is being chosen or scanned, both buttons wait for it to finish.
+function setBusy(busy: boolean): void {
+  chooseButton.disabled = busy;
+  refreshButton.disabled = busy;
+}
 
 // On launch: open the folder from last time, and put the last song back in the player bar,
 // paused. Called from the end of this file, once everything above and below is defined.
 async function restoreLastSession(): Promise<void> {
-  chooseButton.disabled = true;
+  setBusy(true);
   try {
     const { folder, lastSongId } = await window.miautify.getStartupState();
     savedSongId = lastSongId;
@@ -165,19 +190,24 @@ async function restoreLastSession(): Promise<void> {
     console.error(error);
     showMessage(t("library.empty"));
   } finally {
-    chooseButton.disabled = false;
+    setBusy(false);
   }
 }
 
 // Scans the folder and lists its songs. Returns them, or null if the folder couldn't be read.
-async function openLibrary(folder: string): Promise<Song[] | null> {
+// A refresh keeps the current list on screen until the new one is ready, instead of
+// flashing "Scanning...".
+async function openLibrary(folder: string, { refreshing = false } = {}): Promise<Song[] | null> {
   folderLabel.textContent = folder;
   folderLabel.title = folder;
-  countLabel.textContent = "";
-  showMessage(t("library.scanning"));
+  if (!refreshing) {
+    countLabel.textContent = "";
+    showMessage(t("library.scanning"));
+  }
 
   try {
     const songs = await window.miautify.scanChosenFolder();
+    refreshButton.hidden = false;
     countLabel.textContent = t("library.songCount", { count: songs.length });
     if (songs.length === 0) {
       showMessage(t("library.noSongs"));
