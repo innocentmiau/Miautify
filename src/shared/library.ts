@@ -20,13 +20,24 @@ export interface StartupState {
   lastSongId: string | null;
 }
 
+export interface ScanOutcome {
+  songs: Song[];
+  // False when the folder matched the cache exactly, so the list on screen is still right.
+  changed: boolean;
+}
+
 // What the preload script exposes to the page as `window.miautify`.
 export interface MiautifyApi {
   getStartupState(): Promise<StartupState>;
   // Opens the folder picker. Resolves to the chosen folder, or null if the user cancels.
   chooseFolder(): Promise<string | null>;
+  // The chosen folder's songs as saved from the last scan, without reading the folder.
+  // Instant, so the list can show while the real scan runs.
+  cachedSongs(): Promise<Song[]>;
   // Scans the folder picked last. The page can't pass a path of its own.
-  scanChosenFolder(): Promise<Song[]>;
+  scanChosenFolder(): Promise<ScanOutcome>;
+  // Calls `listener` while a scan reads tags. Returns a function that stops listening.
+  onScanProgress(listener: (done: number, total: number) => void): () => void;
   // Remembers the song in the player bar, to show it again on the next launch.
   setLastSong(id: string): void;
 }
@@ -34,7 +45,9 @@ export interface MiautifyApi {
 export const ipcChannels = {
   getStartupState: "app:get-startup-state",
   chooseFolder: "library:choose-folder",
+  cachedSongs: "library:cached-songs",
   scanChosenFolder: "library:scan-chosen-folder",
+  scanProgress: "library:scan-progress",
   setLastSong: "player:set-last-song",
 } as const;
 

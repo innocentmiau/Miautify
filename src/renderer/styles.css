@@ -86,9 +86,14 @@ body {
   color: var(--text-muted);
 }
 
-.count {
+.count,
+.status {
   color: var(--text-muted);
   white-space: nowrap;
+}
+
+.status {
+  font-size: 0.875rem;
 }
 
 .content {
