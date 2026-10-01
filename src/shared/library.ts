@@ -1,3 +1,5 @@
+import type { PreferenceKey, Preferences } from "./preferences.js";
+
 // Types shared by the main process, the preload bridge and the renderer.
 
 export interface Song {
@@ -23,7 +25,10 @@ export interface StartupState {
   // Null when never set, so the page uses its default.
   volume: number | null;
   muted: boolean;
-  showAllSongs: boolean;
+  // Every preference, saved or default.
+  preferences: Preferences;
+  // The app's version, for the About section of Settings.
+  version: string;
 }
 
 export interface ScanOutcome {
@@ -48,8 +53,9 @@ export interface MiautifyApi {
   setLastSong(id: string): void;
   // Remembers the volume slider position (0 to 1) and mute.
   saveVolume(level: number, muted: boolean): void;
-  // Remembers the "Include subfolders" toggle of the folder view.
-  saveShowAllSongs(showAll: boolean): void;
+  // Saves one preference from the Settings page. Main refuses unknown keys and values of
+  // the wrong type.
+  setPreference<K extends PreferenceKey>(key: K, value: Preferences[K]): void;
   // Remembers that a song failed to play, so it's skipped until its file changes.
   markUnplayable(id: string): void;
 }
@@ -62,7 +68,7 @@ export const ipcChannels = {
   scanProgress: "library:scan-progress",
   setLastSong: "player:set-last-song",
   saveVolume: "player:save-volume",
-  saveShowAllSongs: "library:save-show-all-songs",
+  setPreference: "settings:set-preference",
   markUnplayable: "library:mark-unplayable",
 } as const;
 

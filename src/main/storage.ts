@@ -1,16 +1,16 @@
 import { DatabaseSync } from "node:sqlite";
+import type { Preferences } from "../shared/preferences.js";
 import type { CachedSong } from "./scanner.js";
 
-// Everything the app remembers between launches, by key, with the type of each value.
-// Adding a setting means adding a line here; a typo in a key is then a compile error.
-export interface Settings {
+// Everything the app remembers between launches, by key, with the type of each value: the
+// user's preferences (shared/preferences.ts) plus the app's own state below. A typo in a
+// key is a compile error.
+export interface Settings extends Preferences {
   "library.folder": string;
   "player.lastSongId": string;
   // Volume slider position, 0 to 1 (not the gain: see src/renderer/volume.ts).
   "player.volume": number;
   "player.muted": boolean;
-  // Folder view: list the songs of subfolders too, instead of showing subfolder tiles.
-  "library.showAllSongs": boolean;
 }
 
 // Each entry upgrades the database by one version. Never edit one that has shipped: add a

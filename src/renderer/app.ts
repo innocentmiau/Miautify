@@ -1,10 +1,13 @@
 import { fallbackLanguage, initI18n } from "../shared/i18n.js";
 import type { Song } from "../shared/library.js";
+import { defaultPreferences, type PreferenceKey, type Preferences } from "../shared/preferences.js";
 import { FolderTree } from "./folder-tree.js";
 import { buildFolderTree, type Folder, findFolder, folderOfSong, songsShown } from "./folders.js";
 import { connectMediaSession } from "./media-session.js";
 import { Player } from "./player.js";
-import { type Action, actionFor, type Shortcut, shortcuts } from "./shortcuts.js";
+import { SettingsPage } from "./settings-page.js";
+import { shortcutList } from "./shortcut-list.js";
+import { type Action, actionFor } from "./shortcuts.js";
 import { SongList } from "./song-list.js";
 
 const language = new URLSearchParams(location.search).get("lang") ?? fallbackLanguage;
@@ -73,39 +76,20 @@ const breadcrumb = document.createElement("nav");
 breadcrumb.className = "breadcrumb";
 breadcrumb.setAttribute("aria-label", t("library.folderPath"));
 
-// "Include subfolders": list the songs of every subfolder too, instead of subfolder tiles.
-// Saved, so it stays how you left it.
-let showAllSongs = false;
+// The user's preferences (the Settings page). Loaded on launch; changed through
+// setPreference(), which saves them and applies them.
+let preferences: Preferences = { ...defaultPreferences };
 
-const allSongsCheckbox = document.createElement("input");
-allSongsCheckbox.type = "checkbox";
-// A switch, not a plain checkbox, for screen readers too: it takes effect right away.
-allSongsCheckbox.setAttribute("role", "switch");
-allSongsCheckbox.addEventListener("change", () => {
-  showAllSongs = allSongsCheckbox.checked;
-  window.miautify.saveShowAllSongs(showAllSongs);
-  if (openFolder) {
-    showFolder(openFolder);
-  }
-});
-
-const allSongsText = document.createElement("span");
-allSongsText.textContent = t("library.includeSubfolders");
-
-const allSongsToggle = document.createElement("label");
-allSongsToggle.className = "switch";
-allSongsToggle.append(allSongsCheckbox, allSongsText);
-
-// The path on the left, the toggle on the right.
+// Above the folder's contents: the path to it.
 const folderHeader = document.createElement("div");
 folderHeader.className = "folder-header";
-folderHeader.append(breadcrumb, allSongsToggle);
+folderHeader.append(breadcrumb);
 
 const folderGrid = document.createElement("div");
 folderGrid.className = "folder-grid";
 
-// The main menu on the left edge: the folder tree, then library actions at the bottom.
-// Settings will join them once there's a settings page.
+// The main menu on the left edge: the folder tree, then library actions and Settings at
+// the bottom.
 const folderTree = new FolderTree({
   onOpen: (folder) => showFolder(folder),
   expandLabel: t("menu.expand"),
@@ -117,14 +101,14 @@ foldersHeading.textContent = t("menu.folders");
 
 const menuActions = document.createElement("div");
 menuActions.className = "menu-actions";
-// Opens the list of keyboard shortcuts (also opened with "?").
-const shortcutsButton = document.createElement("button");
-shortcutsButton.type = "button";
-shortcutsButton.className = "secondary";
-shortcutsButton.textContent = t("shortcuts.title");
-shortcutsButton.addEventListener("click", () => showShortcuts());
+// Opens the Settings page (also Ctrl+,).
+const settingsButton = document.createElement("button");
+settingsButton.type = "button";
+settingsButton.className = "secondary";
+settingsButton.textContent = t("settings.title");
+settingsButton.addEventListener("click", () => openSettings());
 
-menuActions.append(chooseButton, refreshButton, shortcutsButton);
+menuActions.append(chooseButton, refreshButton, settingsButton);
 
 const menu = document.createElement("div");
 menu.className = "menu";
@@ -300,8 +284,8 @@ window.addEventListener("mouseup", (event) => {
 
 // Keeps shortcuts out of the way where the key already means something.
 function shortcutApplies(action: Action, target: EventTarget | null): boolean {
-  if (shortcutsDialog.open) {
-    return false; // The shortcuts window is up: only Escape (which closes it) applies.
+  if (shortcutsDialog.open || settingsPage.isOpen) {
+    return false; // A window is up: only Escape (which closes it) applies.
   }
   if (!(target instanceof HTMLElement)) {
     return true;
@@ -357,11 +341,13 @@ function runShortcut(action: Action): void {
     case "showShortcuts":
       showShortcuts();
       break;
+    case "openSettings":
+      openSettings();
+      break;
   }
 }
 
-// The "Keyboard shortcuts" window: a native <dialog>, so Escape closes it and focus stays
-// inside it while it's open.
+// The quick "Keyboard shortcuts" window ("?"). The same list is also in Settings.
 const shortcutsDialog = document.createElement("dialog");
 shortcutsDialog.className = "shortcuts-dialog";
 document.body.append(shortcutsDialog);
@@ -370,47 +356,59 @@ function showShortcuts(): void {
   const title = document.createElement("h2");
   title.textContent = t("shortcuts.title");
 
-  const list = document.createElement("dl");
-  for (const shortcut of shortcuts) {
-    const keys = document.createElement("dt");
-    keys.append(...keyLabels(shortcut));
-    const description = document.createElement("dd");
-    description.textContent = t(`shortcuts.${shortcut.action}`);
-    list.append(keys, description);
-  }
-
   const close = document.createElement("button");
   close.type = "button";
   close.className = "primary";
   close.textContent = t("shortcuts.close");
   close.addEventListener("click", () => shortcutsDialog.close());
 
-  shortcutsDialog.replaceChildren(title, list, close);
+  shortcutsDialog.replaceChildren(title, shortcutList(t), close);
   shortcutsDialog.showModal();
 }
 
-// A shortcut's keys as <kbd> elements: Ctrl, then the key. Key names are translated
-// (German keyboards say "Strg", not "Ctrl").
-function keyLabels(shortcut: Shortcut): HTMLElement[] {
-  const names: string[] = shortcut.ctrl ? [t("keys.ctrl")] : [];
-  const arrows: Record<string, string> = {
-    ArrowLeft: "←",
-    ArrowRight: "→",
-    ArrowUp: "↑",
-    ArrowDown: "↓",
-  };
-  if (shortcut.key === " ") {
-    names.push(t("keys.space"));
-  } else if (shortcut.key === "Backspace") {
-    names.push(t("keys.backspace"));
-  } else {
-    names.push(arrows[shortcut.key] ?? shortcut.key.toUpperCase());
+// The Settings page. Each section lists its switches; adding a setting means adding it to
+// shared/preferences.ts and a row here.
+const aboutText = document.createElement("p");
+aboutText.className = "about";
+
+const settingsPage = new SettingsPage({
+  title: t("settings.title"),
+  closeLabel: t("settings.close"),
+  sections: [
+    {
+      title: t("settings.library"),
+      rows: [
+        {
+          key: "library.showAllSongs",
+          label: t("settings.showAllSongs"),
+          description: t("settings.showAllSongsHint"),
+        },
+        {
+          key: "library.hideUnplayable",
+          label: t("settings.hideUnplayable"),
+          description: t("settings.hideUnplayableHint"),
+        },
+      ],
+    },
+    { title: t("shortcuts.title"), content: shortcutList(t) },
+    { title: t("settings.about"), content: aboutText },
+  ],
+  onChange: (key, value) => setPreference(key, value),
+});
+document.body.append(settingsPage.element);
+
+function openSettings(): void {
+  settingsPage.open(preferences);
+}
+
+// Saves a preference and applies it right away.
+function setPreference<K extends PreferenceKey>(key: K, value: Preferences[K]): void {
+  preferences = { ...preferences, [key]: value };
+  window.miautify.setPreference(key, value);
+  // Both library preferences change what a folder lists, so show the open one again.
+  if (openFolder) {
+    showFolder(openFolder, { keepScroll: true });
   }
-  return names.map((name) => {
-    const kbd = document.createElement("kbd");
-    kbd.textContent = name;
-    return kbd;
-  });
 }
 
 // The id last sent to be remembered, so it's only sent when the song actually changes.
@@ -434,7 +432,11 @@ player.addEventListener("volume", () => updateVolumeControl());
 player.addEventListener("unplayable", (event) => {
   const { song } = (event as CustomEvent<{ song: Song }>).detail;
   window.miautify.markUnplayable(song.id);
-  songList.refresh();
+  if (preferences["library.hideUnplayable"] && openFolder) {
+    showFolder(openFolder, { keepScroll: true }); // Takes it off the list.
+  } else {
+    songList.refresh(); // Marks it in red.
+  }
   showNotice(t("player.cantPlay", { name: song.title ?? song.fileName }));
 });
 
@@ -464,16 +466,11 @@ refreshButton.addEventListener("click", () => {
 // paused. Called from the end of this file, once everything above and below is defined.
 async function restoreLastSession(): Promise<void> {
   try {
-    const {
-      folder,
-      lastSongId,
-      volume,
-      muted,
-      showAllSongs: showAll,
-    } = await window.miautify.getStartupState();
+    const state = await window.miautify.getStartupState();
+    const { folder, lastSongId, volume, muted } = state;
     savedSongId = lastSongId;
-    showAllSongs = showAll;
-    allSongsCheckbox.checked = showAll;
+    preferences = state.preferences;
+    aboutText.textContent = t("settings.version", { version: state.version });
     if (volume !== null) {
       player.volume = volume;
     }
@@ -600,13 +597,17 @@ function showFolder(folder: Folder, { keepScroll = false } = {}): void {
   const scrollTop = content.scrollTop;
   openFolder = folder;
   // What's listed is what plays: double-clicking queues from this same list.
-  listedSongs = songsShown(folder, showAllSongs);
+  listedSongs = songsShown(
+    folder,
+    preferences["library.showAllSongs"],
+    preferences["library.hideUnplayable"],
+  );
   folderTree.setOpen(folder);
   renderBreadcrumb(folder);
   renderFolderGrid(folder);
 
   const parts: HTMLElement[] = [folderHeader];
-  if (!showAllSongs && folder.folders.length > 0) {
+  if (!preferences["library.showAllSongs"] && folder.folders.length > 0) {
     parts.push(folderGrid);
   }
   if (listedSongs.length > 0) {

@@ -13,7 +13,8 @@ export type Action =
   | "volumeDown"
   | "toggleMute"
   | "parentFolder"
-  | "showShortcuts";
+  | "showShortcuts"
+  | "openSettings";
 
 export interface Shortcut {
   action: Action;
@@ -34,6 +35,7 @@ export const shortcuts: readonly Shortcut[] = [
   { action: "toggleMute", key: "m" },
   { action: "parentFolder", key: "Backspace" },
   { action: "showShortcuts", key: "?" },
+  { action: "openSettings", key: ",", ctrl: true },
 ];
 
 // The parts of a KeyboardEvent that matter here (a real KeyboardEvent fits this).

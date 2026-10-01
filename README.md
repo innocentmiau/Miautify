@@ -23,8 +23,8 @@ plays it. No server, no import step, and it never renames or moves your files.
   top and its own songs below. Double-click a subfolder to go in, and use the
   path at the top to go back up. Playing a song plays through the rest of that
   folder. The main menu on the left edge opens when you hover it and shows all
-  your folders as a tree. Turn on **Include subfolders** to list (and play)
-  every song in a folder and its subfolders together instead.
+  your folders as a tree. Turn on **Include subfolders** in Settings to list
+  (and play) every song in a folder and its subfolders together instead.
 - **Opens straight into your music.** It remembers the folder and the last song,
   which waits in the player bar, paused, ready to play.
 - **Fast with big libraries.** Tags are cached, so launching shows your list
@@ -103,17 +103,18 @@ pushed to the main branch.
 - [x] _Files that can't play are skipped and marked in red, until the file
       changes (2026-09-28)_
 - [x] _Media keys, headphone buttons and the system's media controls (2026-09-28)_
+- [x] _Settings page (menu or Ctrl+,), with an option to hide files that can't
+      play (2026-10-01)_
 
 - [ ] Album covers
 - [ ] Search, ignoring accents, punctuation and word order
 - [ ] Sort by any column
-- [ ] Setting to hide files that can't play
 - [ ] Favorites and playlists
 - [ ] Play counts and your most played songs
 - [ ] Home page with albums, artists, genres and years
 - [ ] Shuffle without repeating recent songs, and repeat
 - [ ] Crossfade and an equalizer
-- [ ] Settings page, color themes and a language picker (Portuguese first)
+- [ ] Color themes and a language picker (Portuguese first)
 - [ ] Discord "Listening to" status
 - [ ] Edit tags (one song, or a whole album or artist at once)
 - [ ] Keep favorites and play counts when a file is renamed or moved

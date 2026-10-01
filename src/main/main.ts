@@ -3,6 +3,13 @@ import path from "node:path";
 import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import { initI18n, pickLanguage } from "../shared/i18n.js";
 import { ipcChannels, type ScanOutcome, type Song, type StartupState } from "../shared/library.js";
+import {
+  defaultPreferences,
+  isValidPreference,
+  type PreferenceKey,
+  type Preferences,
+  withDefaults,
+} from "../shared/preferences.js";
 import { handleMediaProtocol, knownSong, registerMediaScheme, rememberSongs } from "./media.js";
 import { scanFolder, songsFromCache } from "./scanner.js";
 import { Storage } from "./storage.js";
@@ -56,7 +63,8 @@ ipcMain.handle(ipcChannels.getStartupState, async (): Promise<StartupState> => {
     lastSongId: storage.get("player.lastSongId") ?? null,
     volume: storage.get("player.volume") ?? null,
     muted: storage.get("player.muted") ?? false,
-    showAllSongs: storage.get("library.showAllSongs") ?? false,
+    preferences: savedPreferences(),
+    version: app.getVersion(),
   };
 });
 
@@ -129,11 +137,17 @@ ipcMain.on(ipcChannels.saveVolume, (_event, level: unknown, muted: unknown) => {
   }
 });
 
-ipcMain.on(ipcChannels.saveShowAllSongs, (_event, showAll: unknown) => {
-  if (typeof showAll === "boolean") {
-    storage.set("library.showAllSongs", showAll);
+ipcMain.on(ipcChannels.setPreference, (_event, key: unknown, value: unknown) => {
+  // Only known preferences, with a value of the right type (see shared/preferences.ts).
+  if (isValidPreference(key, value)) {
+    storage.set(key, value as Preferences[typeof key]);
   }
 });
+
+function savedPreferences(): Preferences {
+  const keys = Object.keys(defaultPreferences) as PreferenceKey[];
+  return withDefaults(Object.fromEntries(keys.map((key) => [key, storage.get(key)])));
+}
 
 ipcMain.on(ipcChannels.markUnplayable, (_event, id: unknown) => {
   // The page sends an id, never a path; only songs from a scan can be marked.

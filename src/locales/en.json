@@ -14,8 +14,7 @@
     "songCount_one": "{{count, number}} song",
     "songCount_other": "{{count, number}} songs",
     "folderPath": "Folder path",
-    "openFolderHint": "Double-click to open",
-    "includeSubfolders": "Include subfolders"
+    "openFolderHint": "Double-click to open"
   },
   "song": {
     "title": "Title",
@@ -54,11 +53,23 @@
     "volumeDown": "Volume down",
     "toggleMute": "Mute or unmute",
     "parentFolder": "Go up one folder (also the mouse back button)",
-    "showShortcuts": "Show this list"
+    "showShortcuts": "Show this list",
+    "openSettings": "Open settings"
   },
   "keys": {
     "ctrl": "Ctrl",
     "space": "Space",
     "backspace": "Backspace"
+  },
+  "settings": {
+    "title": "Settings",
+    "close": "Close",
+    "library": "Library",
+    "showAllSongs": "Include subfolders",
+    "showAllSongsHint": "List every song in a folder and its subfolders together, instead of showing the subfolders as tiles.",
+    "hideUnplayable": "Hide files that can't play",
+    "hideUnplayableHint": "Files that failed to play are left out of the lists. They come back when the file changes.",
+    "about": "About",
+    "version": "Miautify {{version}}"
   }
 }

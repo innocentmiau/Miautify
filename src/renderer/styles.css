@@ -303,17 +303,7 @@ body {
 
 /* A checkbox drawn as a sliding switch: the track is the checkbox itself, the knob is its
    ::before, which moves right when checked. */
-.switch {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--text-muted);
-  white-space: nowrap;
-  cursor: pointer;
-  user-select: none;
-}
-
-.switch input {
+input.toggle-switch {
   position: relative;
   width: 32px;
   height: 18px;
@@ -326,7 +316,7 @@ body {
   transition: background 150ms;
 }
 
-.switch input::before {
+input.toggle-switch::before {
   content: "";
   position: absolute;
   top: 2px;
@@ -338,11 +328,11 @@ body {
   transition: transform 150ms;
 }
 
-.switch input:checked {
+input.toggle-switch:checked {
   background: var(--accent);
 }
 
-.switch input:checked::before {
+input.toggle-switch:checked::before {
   transform: translateX(14px);
 }
 
@@ -693,8 +683,8 @@ body {
   font-size: 1.1rem;
 }
 
-/* Keys on the left, what they do on the right. */
-.shortcuts-dialog dl {
+/* Keys on the left, what they do on the right (in Settings and the "?" window). */
+.shortcut-list {
   display: grid;
   grid-template-columns: max-content 1fr;
   gap: 10px 20px;
@@ -702,12 +692,12 @@ body {
   margin: 0 0 20px;
 }
 
-.shortcuts-dialog dt {
+.shortcut-list dt {
   display: flex;
   gap: 4px;
 }
 
-.shortcuts-dialog dd {
+.shortcut-list dd {
   margin: 0;
   color: var(--text-muted);
 }
@@ -722,4 +712,78 @@ kbd {
   font: inherit;
   font-size: 0.85rem;
   text-align: center;
+}
+
+/* The Settings window: a title bar, then the sections, scrolling if they don't fit. */
+.settings {
+  width: min(600px, 92vw);
+  max-height: 85vh;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.settings[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.settings::backdrop {
+  background: rgb(0 0 0 / 50%);
+}
+
+.settings header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.settings-body {
+  overflow: auto;
+  padding: 8px 24px 24px;
+}
+
+.settings section h3 {
+  margin: 20px 0 8px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* One option: its name and a short explanation on the left, the switch on the right. */
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.setting-row .text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.setting-row .description {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.settings .about {
+  margin: 0;
+  color: var(--text-muted);
 }
