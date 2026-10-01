@@ -6,6 +6,16 @@ All notable changes to Miautify are listed here, newest first. The format follow
 
 ## [Unreleased]
 
+### Added
+
+- A Settings page, from the menu or with Ctrl+,: all the options in one place.
+- An option to hide files that can't play.
+
+### Changed
+
+- "Include subfolders" moved from the folder view into Settings.
+- The keyboard shortcuts list is now in Settings (`?` still shows it).
+
 ## [0.0.2] - 2026-09-28
 
 Test pre-release.
