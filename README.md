@@ -77,31 +77,32 @@ page](https://github.com/innocentmiau/Miautify/releases).
 
 ## Roadmap
 
-What is planned to be done with the dates where each features has been fully pushed to the main branch.
+What is planned to be done with the dates where each features has been fully
+pushed to the main branch.
 
-- [x] Pick a folder, scan it and its subfolders for mp3s, and list them with
-      their tags (2026-09-25)
-- [x] Windows installer and Linux AppImage, built automatically for each release
-      (2026-09-26)
-- [x] Double-click to play, play and pause (2026-09-26)
-- [x] Timeline with elapsed and total time, click or drag to jump (2026-09-27)
-- [x] Ocean blue look (2026-09-27)
-- [x] Next and previous, and auto-advance to the next song (2026-09-27)
-- [x] Remember the folder and the last song between launches (2026-09-27)
-- [x] Tag cache for fast launches, background check for changes, Refresh button
-      (2026-09-28)
-- [x] Volume and mute, remembered between launches (2026-09-28)
-- [x] Smooth scrolling through thousands of songs (2026-09-28)
-- [x] Browse by folder: a folder shows its subfolders above its songs, like a
-      playlist (2026-09-28)
-- [x] Main menu on the left edge with the folder tree, opens when you hover it
-      (2026-09-28)
-- [x] "Include subfolders" switch: list and play every song in a folder and its
-      subfolders together (2026-09-28)
-- [x] Keyboard shortcuts, with a list of them on `?` (2026-09-28)
-- [x] Files that can't play are skipped and marked in red, until the file
-      changes (2026-09-28)
-- [x] Media keys, headphone buttons and the system's media controls (2026-09-28)
+- [x] _Pick a folder, scan it and its subfolders for mp3s, and list them with
+      their tags (2026-09-25)_
+- [x] _Windows installer and Linux AppImage, built automatically for each release
+      (2026-09-26)_
+- [x] _Double-click to play, play and pause (2026-09-26)_
+- [x] _Timeline with elapsed and total time, click or drag to jump (2026-09-27)_
+- [x] _Ocean blue look (2026-09-27)_
+- [x] _Next and previous, and auto-advance to the next song (2026-09-27)_
+- [x] _Remember the folder and the last song between launches (2026-09-27)_
+- [x] _Tag cache for fast launches, background check for changes, Refresh button
+      (2026-09-28)_
+- [x] _Volume and mute, remembered between launches (2026-09-28)_
+- [x] _Smooth scrolling through thousands of songs (2026-09-28)_
+- [x] _Browse by folder: a folder shows its subfolders above its songs, like a
+      playlist (2026-09-28)_
+- [x] _Main menu on the left edge with the folder tree, opens when you hover it
+      (2026-09-28)_
+- [x] _"Include subfolders" switch: list and play every song in a folder and its
+      subfolders together (2026-09-28)_
+- [x] _Keyboard shortcuts, with a list of them on `?` (2026-09-28)_
+- [x] _Files that can't play are skipped and marked in red, until the file
+      changes (2026-09-28)_
+- [x] _Media keys, headphone buttons and the system's media controls (2026-09-28)_
 
 - [ ] Album covers
 - [ ] Search, ignoring accents, punctuation and word order
