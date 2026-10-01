@@ -145,4 +145,16 @@ describe("songsShown and what auto-advance plays", () => {
       assert.ok(!played.includes("1 - Elsewhere.mp3"));
     }
   });
+
+  it("leaves out files that can't play when hideUnplayable is on", () => {
+    const broken = { ...song("/m/Album/3 - Broken.mp3"), unplayable: true };
+    const withBroken = buildFolderTree("/m", [song("/m/Album/1 - Own.mp3"), broken]);
+    const folder = findFolder(withBroken, ["Album"]);
+    assert.deepEqual(
+      songsShown(folder, false, true).map((s) => s.fileName),
+      ["1 - Own.mp3"],
+    );
+    // Off (the default): it stays listed, marked in red by the page.
+    assert.equal(songsShown(folder, false).length, 2);
+  });
 });

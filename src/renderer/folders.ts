@@ -51,10 +51,12 @@ export function buildFolderTree(root: string, songs: readonly Song[]): Folder {
 }
 
 // The songs a folder shows, which are also the songs that play from it: only its own
-// songs, or with `showAll`, everything in it and its subfolders. The song list and the
-// queue both come from here, so what's on screen is exactly what auto-advance plays.
-export function songsShown(folder: Folder, showAll: boolean): Song[] {
-  return showAll ? folder.allSongs : folder.songs;
+// songs, or with `showAll`, everything in it and its subfolders. With `hideUnplayable`,
+// files that failed to play are left out. The song list and the queue both come from
+// here, so what's on screen is exactly what auto-advance plays.
+export function songsShown(folder: Folder, showAll: boolean, hideUnplayable = false): Song[] {
+  const songs = showAll ? folder.allSongs : folder.songs;
+  return hideUnplayable ? songs.filter((song) => !song.unplayable) : songs;
 }
 
 // Follows `segments` down from `root`. Stops at the deepest folder that still exists, so a

@@ -18,7 +18,7 @@ const api: MiautifyApi = {
   // send, not invoke: nothing to wait for, the page just reports it.
   setLastSong: (id) => ipcRenderer.send(ipcChannels.setLastSong, id),
   saveVolume: (level, muted) => ipcRenderer.send(ipcChannels.saveVolume, level, muted),
-  saveShowAllSongs: (showAll) => ipcRenderer.send(ipcChannels.saveShowAllSongs, showAll),
+  setPreference: (key, value) => ipcRenderer.send(ipcChannels.setPreference, key, value),
   markUnplayable: (id) => ipcRenderer.send(ipcChannels.markUnplayable, id),
 };
 
