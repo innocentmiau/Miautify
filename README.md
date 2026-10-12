@@ -36,6 +36,8 @@ plays it. No server, no import step, and it never renames or moves your files.
 - **Search** the whole library from the top bar (Ctrl+F): by title, artist or album,
   in any word order, ignoring accents and punctuation, in any language. Matching
   folders show up too.
+- **Sort by any column:** click a column title to sort by it, again to reverse,
+  and a third time for the folder's own order. Songs play in the order shown.
 - **Keyboard shortcuts:** Space to play or pause, the arrows to jump 5 seconds,
   Ctrl with the arrows for previous, next and volume, M to mute, Backspace (or
   the mouse back button) to go up a folder. Press `?` to see them all.
@@ -110,9 +112,9 @@ pushed to the main branch.
       play (2026-10-01)_
 - [x] _Search songs and folders (Ctrl+F), ignoring accents, punctuation and word
       order (2026-10-12)_
+- [x] _Sort by any column (2026-10-12)_
 
 - [ ] Album covers
-- [ ] Sort by any column
 - [ ] Favorites and playlists
 - [ ] Play counts and your most played songs
 - [ ] Home page with albums, artists, genres and years
