@@ -1,4 +1,5 @@
 import type { Song } from "../shared/library.js";
+import { createCover, setCover } from "./cover.js";
 import { visibleRange } from "./virtual.js";
 
 export interface SongListOptions {
@@ -14,11 +15,18 @@ export interface SongListOptions {
   onPlay(index: number): void;
   // A column title was clicked, by its position in `columns`.
   onSort(column: number): void;
+  // The song's cover picture, shown at the start of the first column.
+  coverUrl(song: Song): string;
+  // A new placeholder icon for songs whose cover isn't loaded (or that have none).
+  coverPlaceholder(): SVGSVGElement;
 }
 
 // Every row is this tall, so row i always starts at i * rowHeight (see virtual.ts).
 const rowHeight = 36;
 const overscan = 10;
+// Covers load once scrolling has paused this long, so flinging through thousands of songs
+// doesn't ask for thousands of covers on the way.
+const coverDelayMs = 150;
 
 // A song list that only creates the rows on screen. However long the list, it keeps a
 // small pool of row elements and moves and refills them as you scroll, instead of one
@@ -39,6 +47,7 @@ export class SongList {
   readonly #rows: HTMLDivElement[] = [];
   #songs: readonly Song[] = [];
   #framePending = false;
+  #coverTimer: ReturnType<typeof setTimeout> | undefined;
 
   // `scroller` is the element that scrolls (the list is placed inside it).
   constructor(scroller: HTMLElement, options: SongListOptions) {
@@ -148,6 +157,20 @@ export class SongList {
         this.#fill(row, index);
       }
     }
+
+    clearTimeout(this.#coverTimer);
+    this.#coverTimer = setTimeout(() => this.#loadCovers(), coverDelayMs);
+  }
+
+  // Gives each row on screen its song's cover. Rows that already show it are left alone.
+  #loadCovers(): void {
+    for (const row of this.#rows) {
+      const cover = row.querySelector<HTMLElement>(".cover");
+      const song = this.#songs[Number(row.dataset.index)];
+      if (!row.hidden && cover && song) {
+        setCover(cover, this.#options.coverUrl(song));
+      }
+    }
   }
 
   #createRow(): HTMLDivElement {
@@ -159,12 +182,22 @@ export class SongList {
       cell.setAttribute("role", "cell");
       row.append(cell);
     }
+    // The first column also has the cover, so its text gets its own element.
+    const text = document.createElement("span");
+    text.className = "text";
+    row.firstElementChild?.append(createCover(this.#options.coverPlaceholder()), text);
     this.#body.append(row);
     return row;
   }
 
   #fill(row: HTMLDivElement, index: number): void {
     const song = this.#songs[index];
+    // A row reused for another song drops the old cover right away; the new one loads
+    // when scrolling pauses (see #loadCovers).
+    const cover = row.querySelector<HTMLElement>(".cover");
+    if (cover && row.dataset.songId !== song.id) {
+      setCover(cover, null);
+    }
     row.dataset.index = String(index);
     row.dataset.songId = song.id;
     row.setAttribute("aria-rowindex", String(index + 2)); // The header is row 1.
@@ -173,7 +206,7 @@ export class SongList {
     row.classList.toggle("unplayable", song.unplayable === true);
     const texts = this.#options.cells(song);
     for (const [i, cell] of [...row.children].entries()) {
-      cell.textContent = texts[i];
+      (cell.querySelector(".text") ?? cell).textContent = texts[i];
     }
   }
 }

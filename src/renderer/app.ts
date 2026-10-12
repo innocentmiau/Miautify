@@ -1,7 +1,8 @@
 import { fallbackLanguage, initI18n } from "../shared/i18n.js";
-import type { Song } from "../shared/library.js";
+import { coverUrl, type Song } from "../shared/library.js";
 import { defaultPreferences, type PreferenceKey, type Preferences } from "../shared/preferences.js";
 import { nextSort, type SongSort, sortColumns, sortSongs } from "../shared/sort.js";
+import { createCover, setCover } from "./cover.js";
 import { FolderTree } from "./folder-tree.js";
 import { buildFolderTree, type Folder, findFolder, folderOfSong, songsShown } from "./folders.js";
 import { connectMediaSession } from "./media-session.js";
@@ -160,6 +161,8 @@ const songList = new SongList(content, {
   ],
   isPlaying: (song) => song.id === player.current?.id,
   unplayableLabel: t("player.unplayable"),
+  coverUrl: (song) => coverUrl(song.id),
+  coverPlaceholder: () => icon(musicNoteIconPath),
   onPlay: (index) => player.playFrom(listedSongs, index),
   onSort: (column) => {
     sort = nextSort(sort, sortColumns[column]);
@@ -183,6 +186,7 @@ const volumeHighIconPath =
 const volumeLowIconPath =
   "M18.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z";
 const menuIconPath = "M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z";
+const musicNoteIconPath = "M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z";
 const folderIconPath =
   "M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z";
 const volumeOffIconPath =
@@ -210,9 +214,15 @@ nowTitle.className = "now-title";
 const nowArtist = document.createElement("span");
 nowArtist.className = "now-artist";
 
+const nowText = document.createElement("div");
+nowText.className = "now-text";
+nowText.append(nowTitle, nowArtist);
+
+const nowCover = createCover(icon(musicNoteIconPath));
+
 const nowPlaying = document.createElement("div");
 nowPlaying.className = "now-playing";
-nowPlaying.append(nowTitle, nowArtist);
+nowPlaying.append(nowCover, nowText);
 
 // Seek row: elapsed time, slider, total time. A native range input comes with keyboard
 // support (arrow keys) and screen reader support for free.
@@ -793,8 +803,10 @@ function renderBreadcrumb(folder: Folder): void {
   breadcrumb.replaceChildren(...parts);
 }
 
-// One tile per subfolder: icon, name and how many songs it holds (including its own
+// One tile per subfolder: its cover, name and how many songs it holds (including its own
 // subfolders). Double-click or Enter opens it; single click is kept free, like for songs.
+// The cover is its first song's, so an album folder shows the album's cover, and a folder
+// whose first song has none keeps the folder icon.
 function renderFolderTiles(folders: Folder[]): void {
   const tiles = folders.map((child) => {
     const tile = document.createElement("button");
@@ -812,7 +824,11 @@ function renderFolderTiles(folders: Folder[]): void {
     text.className = "text";
     text.append(name, count);
 
-    tile.append(icon(folderIconPath), text);
+    const cover = createCover(icon(folderIconPath));
+    const firstSong = child.allSongs[0];
+    setCover(cover, firstSong ? coverUrl(firstSong.id) : null);
+
+    tile.append(cover, text);
     tile.addEventListener("dblclick", () => showFolder(child));
     tile.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
@@ -841,6 +857,7 @@ function updatePlayerBar(): void {
 
   nowTitle.textContent = song.title ?? song.fileName;
   nowArtist.textContent = song.artist ?? "";
+  setCover(nowCover, coverUrl(song.id));
   const label = player.isPlaying ? t("player.pause") : t("player.play");
   toggleButton.title = label;
   toggleButton.setAttribute("aria-label", label);

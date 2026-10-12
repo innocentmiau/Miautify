@@ -385,6 +385,38 @@ input.toggle-switch:checked::before {
 }
 
 /* Subfolders as tiles, as many per row as fit. */
+/* A song's cover (see cover.ts): the placeholder icon, with the picture on top once it has
+   loaded. Each place sets the size. */
+.cover {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--border);
+}
+
+.cover svg {
+  width: 60%;
+  height: 60%;
+  fill: var(--text-muted);
+}
+
+.cover img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  /* Fills the square; a picture that isn't square is cropped, not squashed. */
+  object-fit: cover;
+  visibility: hidden;
+}
+
+.cover.loaded img {
+  visibility: visible;
+}
+
 .folder-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -413,10 +445,16 @@ input.toggle-switch:checked::before {
   border-color: var(--text-muted);
 }
 
+/* The folder's cover, or the folder icon while there's none. */
+.folder-tile .cover {
+  width: 44px;
+  height: 44px;
+  background: none;
+}
+
 .folder-tile svg {
-  width: 28px;
-  height: 28px;
-  flex: none;
+  width: 32px;
+  height: 32px;
   fill: var(--accent);
 }
 
@@ -525,7 +563,7 @@ input.toggle-switch:checked::before {
   color: var(--danger);
 }
 
-.song-row.unplayable > div:first-child::before {
+.song-row.unplayable .text::before {
   content: "!";
   display: inline-block;
   width: 1.2em;
@@ -539,10 +577,28 @@ input.toggle-switch:checked::before {
 
 /* Long titles end in "..." instead of wrapping, since every row has the same height. */
 .song-list-header > div,
-.song-row > div {
+.song-row > div,
+.song-row .text {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* The first column: the song's cover, then its title. */
+.song-row > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.song-row .cover {
+  width: 28px;
+  height: 28px;
+}
+
+/* The Title heading lines up with the titles, after the covers (28px + 10px gap). */
+.song-list-header > div:first-child {
+  padding-left: 38px;
 }
 
 /* Duration: right aligned, and digits of equal width so the column lines up. */
@@ -705,7 +761,20 @@ input.toggle-switch:checked::before {
   cursor: default;
 }
 
+/* The playing song: cover, then title above artist. */
 .now-playing {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.now-playing .cover {
+  width: 48px;
+  height: 48px;
+}
+
+.now-text {
   display: flex;
   flex-direction: column;
   min-width: 0;
