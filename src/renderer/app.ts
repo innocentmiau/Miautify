@@ -5,6 +5,7 @@ import { FolderTree } from "./folder-tree.js";
 import { buildFolderTree, type Folder, findFolder, folderOfSong, songsShown } from "./folders.js";
 import { connectMediaSession } from "./media-session.js";
 import { Player } from "./player.js";
+import { SongSearch, searchFolders } from "./search.js";
 import { SettingsPage } from "./settings-page.js";
 import { shortcutList } from "./shortcut-list.js";
 import { type Action, actionFor } from "./shortcuts.js";
@@ -57,7 +58,15 @@ noticeLabel.setAttribute("role", "status"); // Screen readers announce it when i
 
 const toolbar = getElement("toolbar");
 const content = getElement("content");
-toolbar.append(heading, folderLabel, countLabel, statusLabel, noticeLabel);
+// Search the whole library (Ctrl+F). Typing shows results instead of the open folder;
+// clearing it goes back to that folder.
+const searchBox = document.createElement("input");
+searchBox.type = "search";
+searchBox.className = "search";
+searchBox.placeholder = t("search.placeholder");
+searchBox.setAttribute("aria-label", t("search.label"));
+
+toolbar.append(heading, searchBox, folderLabel, countLabel, statusLabel, noticeLabel);
 
 const player = new Player();
 
@@ -66,6 +75,11 @@ const player = new Player();
 let libraryRoot = "";
 let tree: Folder | null = null;
 let openFolder: Folder | null = null;
+
+// The search over the library's songs (rebuilt with the tree), and the current query.
+let songSearch: SongSearch | null = null;
+let searchQuery = "";
+const folderResultLimit = 24;
 
 // The open folder's own songs, in the order shown. Double-clicking one queues it and every
 // song after it, so a folder plays like a playlist.
@@ -84,6 +98,18 @@ let preferences: Preferences = { ...defaultPreferences };
 const folderHeader = document.createElement("div");
 folderHeader.className = "folder-header";
 folderHeader.append(breadcrumb);
+
+// Above search results: what was searched for, and how many songs matched.
+const resultsTitle = document.createElement("span");
+resultsTitle.className = "results-title";
+const resultsCount = document.createElement("span");
+resultsCount.className = "count";
+const resultsHeader = document.createElement("div");
+resultsHeader.className = "folder-header";
+resultsHeader.append(resultsTitle, resultsCount);
+
+const noResults = document.createElement("p");
+noResults.className = "message";
 
 const folderGrid = document.createElement("div");
 folderGrid.className = "folder-grid";
@@ -344,6 +370,10 @@ function runShortcut(action: Action): void {
     case "openSettings":
       openSettings();
       break;
+    case "focusSearch":
+      searchBox.focus();
+      searchBox.select();
+      break;
   }
 }
 
@@ -405,10 +435,8 @@ function openSettings(): void {
 function setPreference<K extends PreferenceKey>(key: K, value: Preferences[K]): void {
   preferences = { ...preferences, [key]: value };
   window.miautify.setPreference(key, value);
-  // Both library preferences change what a folder lists, so show the open one again.
-  if (openFolder) {
-    showFolder(openFolder, { keepScroll: true });
-  }
+  // Both library preferences change what's listed, so show it again.
+  refreshView({ keepScroll: true });
 }
 
 // The id last sent to be remembered, so it's only sent when the song actually changes.
@@ -432,8 +460,8 @@ player.addEventListener("volume", () => updateVolumeControl());
 player.addEventListener("unplayable", (event) => {
   const { song } = (event as CustomEvent<{ song: Song }>).detail;
   window.miautify.markUnplayable(song.id);
-  if (preferences["library.hideUnplayable"] && openFolder) {
-    showFolder(openFolder, { keepScroll: true }); // Takes it off the list.
+  if (preferences["library.hideUnplayable"]) {
+    refreshView({ keepScroll: true }); // Takes it off the list.
   } else {
     songList.refresh(); // Marks it in red.
   }
@@ -455,6 +483,30 @@ chooseButton.addEventListener("click", async () => {
     // null means cancelled: keep whatever was showing before.
   } catch (error) {
     console.error(error);
+  }
+});
+
+// Typing searches as you go, at most once per frame however fast the keys come.
+let searchFrame = 0;
+searchBox.addEventListener("input", () => {
+  cancelAnimationFrame(searchFrame);
+  searchFrame = requestAnimationFrame(() => {
+    searchQuery = searchBox.value;
+    refreshView();
+  });
+});
+
+// Escape empties the box, and a second Escape leaves it.
+searchBox.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") {
+    return;
+  }
+  event.preventDefault();
+  if (searchBox.value === "") {
+    searchBox.blur();
+  } else {
+    clearSearch();
+    refreshView();
   }
 });
 
@@ -587,13 +639,68 @@ function showLibrary(songs: Song[], { keepScroll = false } = {}): void {
     return;
   }
   tree = buildFolderTree(libraryRoot, songs);
+  songSearch = new SongSearch(songs);
   folderTree.setTree(tree);
-  // Stay in the open folder, or its nearest parent if it was deleted since.
-  showFolder(findFolder(tree, openFolder?.segments ?? []), { keepScroll });
+  refreshView({ keepScroll });
+}
+
+// Shows what belongs in the main area right now: search results while there's a query,
+// otherwise the open folder (or its nearest parent, if it was deleted since).
+function refreshView({ keepScroll = false } = {}): void {
+  if (!tree) {
+    return;
+  }
+  if (searchQuery.trim() !== "") {
+    showResults({ keepScroll });
+  } else {
+    showFolder(findFolder(tree, openFolder?.segments ?? []), { keepScroll });
+  }
+}
+
+// Search results: matching folders as tiles, then matching songs. Double-clicking a song
+// plays through the results; opening a folder ends the search.
+function showResults({ keepScroll = false } = {}): void {
+  if (!tree || !songSearch) {
+    return;
+  }
+  const scrollTop = content.scrollTop;
+  const found = songSearch.search(searchQuery);
+  listedSongs = preferences["library.hideUnplayable"]
+    ? found.filter((song) => !song.unplayable)
+    : found;
+  // One letter matches nearly every folder name, so folders wait for two.
+  const folders =
+    searchQuery.trim().length >= 2 ? searchFolders(tree, searchQuery, folderResultLimit) : [];
+
+  resultsTitle.textContent = t("search.resultsFor", { query: searchQuery.trim() });
+  resultsCount.textContent = t("library.songCount", { count: listedSongs.length });
+  renderFolderTiles(folders);
+
+  const parts: HTMLElement[] = [resultsHeader];
+  if (folders.length > 0) {
+    parts.push(folderGrid);
+  }
+  if (listedSongs.length > 0) {
+    parts.push(songList.element);
+  }
+  if (folders.length === 0 && listedSongs.length === 0) {
+    noResults.textContent = t("search.noResults");
+    parts.push(noResults);
+  }
+  content.replaceChildren(...parts);
+  songList.setSongs(listedSongs);
+  content.scrollTop = keepScroll ? scrollTop : 0;
+}
+
+// Empties the search box (opening a folder ends a search).
+function clearSearch(): void {
+  searchBox.value = "";
+  searchQuery = "";
 }
 
 // Opens a folder: its path at the top, its subfolders, then its own songs.
 function showFolder(folder: Folder, { keepScroll = false } = {}): void {
+  clearSearch();
   const scrollTop = content.scrollTop;
   openFolder = folder;
   // What's listed is what plays: double-clicking queues from this same list.
@@ -604,7 +711,7 @@ function showFolder(folder: Folder, { keepScroll = false } = {}): void {
   );
   folderTree.setOpen(folder);
   renderBreadcrumb(folder);
-  renderFolderGrid(folder);
+  renderFolderTiles(folder.folders);
 
   const parts: HTMLElement[] = [folderHeader];
   if (!preferences["library.showAllSongs"] && folder.folders.length > 0) {
@@ -665,8 +772,8 @@ function renderBreadcrumb(folder: Folder): void {
 
 // One tile per subfolder: icon, name and how many songs it holds (including its own
 // subfolders). Double-click or Enter opens it; single click is kept free, like for songs.
-function renderFolderGrid(folder: Folder): void {
-  const tiles = folder.folders.map((child) => {
+function renderFolderTiles(folders: Folder[]): void {
+  const tiles = folders.map((child) => {
     const tile = document.createElement("button");
     tile.type = "button";
     tile.className = "folder-tile";

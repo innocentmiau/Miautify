@@ -54,6 +54,31 @@ body {
   height: 28px;
 }
 
+.search {
+  width: min(320px, 35vw);
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--background);
+  color: var(--text);
+  font: inherit;
+}
+
+.search::placeholder {
+  color: var(--text-muted);
+}
+
+/* Above search results: "Results for ..." and the song count. */
+.results-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
 /* Text buttons: "primary" is filled with the accent, "secondary" is outlined. */
 .primary,
 .secondary {

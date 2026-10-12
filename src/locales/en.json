@@ -54,7 +54,8 @@
     "toggleMute": "Mute or unmute",
     "parentFolder": "Go up one folder (also the mouse back button)",
     "showShortcuts": "Show this list",
-    "openSettings": "Open settings"
+    "openSettings": "Open settings",
+    "focusSearch": "Search"
   },
   "keys": {
     "ctrl": "Ctrl",
@@ -71,5 +72,11 @@
     "hideUnplayableHint": "Files that failed to play are left out of the lists. They come back when the file changes.",
     "about": "About",
     "version": "Miautify {{version}}"
+  },
+  "search": {
+    "label": "Search",
+    "placeholder": "Search songs and folders",
+    "resultsFor": "Results for \"{{query}}\"",
+    "noResults": "No songs or folders match."
   }
 }
