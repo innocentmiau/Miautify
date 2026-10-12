@@ -1,5 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import type { Preferences } from "../shared/preferences.js";
+import type { SongSort } from "../shared/sort.js";
 import type { CachedSong } from "./scanner.js";
 
 // Everything the app remembers between launches, by key, with the type of each value: the
@@ -11,6 +12,8 @@ export interface Settings extends Preferences {
   // Volume slider position, 0 to 1 (not the gain: see src/renderer/volume.ts).
   "player.volume": number;
   "player.muted": boolean;
+  // Not set while the list is in the folder's own order.
+  "library.sort": SongSort;
 }
 
 // Each entry upgrades the database by one version. Never edit one that has shipped: add a

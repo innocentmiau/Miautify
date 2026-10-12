@@ -10,6 +10,7 @@ import {
   type Preferences,
   withDefaults,
 } from "../shared/preferences.js";
+import { isSongSort, type SongSort } from "../shared/sort.js";
 import { handleMediaProtocol, knownSong, registerMediaScheme, rememberSongs } from "./media.js";
 import { scanFolder, songsFromCache } from "./scanner.js";
 import { Storage } from "./storage.js";
@@ -63,6 +64,7 @@ ipcMain.handle(ipcChannels.getStartupState, async (): Promise<StartupState> => {
     lastSongId: storage.get("player.lastSongId") ?? null,
     volume: storage.get("player.volume") ?? null,
     muted: storage.get("player.muted") ?? false,
+    sort: savedSort(),
     preferences: savedPreferences(),
     version: app.getVersion(),
   };
@@ -136,6 +138,20 @@ ipcMain.on(ipcChannels.saveVolume, (_event, level: unknown, muted: unknown) => {
     storage.set("player.muted", muted);
   }
 });
+
+ipcMain.on(ipcChannels.saveSort, (_event, sort: unknown) => {
+  if (sort === null) {
+    storage.delete("library.sort");
+  } else if (isSongSort(sort)) {
+    storage.set("library.sort", sort);
+  }
+});
+
+// Checked on the way out too: a column could be renamed in a later version.
+function savedSort(): SongSort | null {
+  const sort = storage.get("library.sort");
+  return isSongSort(sort) ? sort : null;
+}
 
 ipcMain.on(ipcChannels.setPreference, (_event, key: unknown, value: unknown) => {
   // Only known preferences, with a value of the right type (see shared/preferences.ts).

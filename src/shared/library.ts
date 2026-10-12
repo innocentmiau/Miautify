@@ -1,4 +1,5 @@
 import type { PreferenceKey, Preferences } from "./preferences.js";
+import type { SongSort } from "./sort.js";
 
 // Types shared by the main process, the preload bridge and the renderer.
 
@@ -25,6 +26,8 @@ export interface StartupState {
   // Null when never set, so the page uses its default.
   volume: number | null;
   muted: boolean;
+  // The column the song list is sorted by, or null for the folder's own order.
+  sort: SongSort | null;
   // Every preference, saved or default.
   preferences: Preferences;
   // The app's version, for the About section of Settings.
@@ -53,6 +56,8 @@ export interface MiautifyApi {
   setLastSong(id: string): void;
   // Remembers the volume slider position (0 to 1) and mute.
   saveVolume(level: number, muted: boolean): void;
+  // Remembers the song list's sort (null: the folder's own order).
+  saveSort(sort: SongSort | null): void;
   // Saves one preference from the Settings page. Main refuses unknown keys and values of
   // the wrong type.
   setPreference<K extends PreferenceKey>(key: K, value: Preferences[K]): void;
@@ -68,6 +73,7 @@ export const ipcChannels = {
   scanProgress: "library:scan-progress",
   setLastSong: "player:set-last-song",
   saveVolume: "player:save-volume",
+  saveSort: "library:save-sort",
   setPreference: "settings:set-preference",
   markUnplayable: "library:mark-unplayable",
 } as const;
