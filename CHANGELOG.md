@@ -20,6 +20,11 @@ All notable changes to Miautify are listed here, newest first. The format follow
   song) and in the system's media controls. They come from the picture inside the mp3,
   or from a cover.jpg, folder.jpg, front.jpg or album.jpg in the same folder. Each
   picture is shrunk once to a small thumbnail and kept in the app's data folder.
+- Shuffle (S) and repeat (R) buttons in the player bar. Shuffle plays every song of the
+  list once in random order, starting with the song you chose, and deals the songs you
+  heard most recently last, using a play history kept between sessions. Repeat cycles
+  through off, the whole list (reshuffled each round when shuffling) and the current
+  song. Both are remembered.
 
 ### Changed
 

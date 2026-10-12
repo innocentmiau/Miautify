@@ -33,6 +33,9 @@ plays it. No server, no import step, and it never renames or moves your files.
 - **Playback:** double-click a song to play it, then play and pause, next and
   previous, and a timeline to jump anywhere in the song. When a song ends, the
   next one starts.
+- **Shuffle and repeat.** Shuffle plays every song of the list once, in random
+  order, and keeps the songs you heard most recently for last, even from earlier
+  sessions. Repeat the list or the current song. Both stay as you left them.
 - **Search** the whole library from the top bar (Ctrl+F): by title, artist or album,
   in any word order, ignoring accents and punctuation, in any language. Matching
   folders show up too.
@@ -42,8 +45,9 @@ plays it. No server, no import step, and it never renames or moves your files.
 - **Sort by any column:** click a column title to sort by it, again to reverse,
   and a third time for the folder's own order. Songs play in the order shown.
 - **Keyboard shortcuts:** Space to play or pause, the arrows to jump 5 seconds,
-  Ctrl with the arrows for previous, next and volume, M to mute, Backspace (or
-  the mouse back button) to go up a folder. Press `?` to see them all.
+  Ctrl with the arrows for previous, next and volume, M to mute, S to shuffle, R
+  to repeat, Backspace (or the mouse back button) to go up a folder. Press `?` to
+  see them all.
 - **Media keys and system controls.** The keyboard's media keys and headphone
   buttons work even when Miautify isn't focused, and the song shows in the
   system's media controls (KDE's media widget, GNOME, the Windows media
@@ -117,11 +121,11 @@ pushed to the main branch.
       order (2026-10-12)_
 - [x] _Sort by any column (2026-10-12)_
 - [x] _Album covers (2026-10-12)_
+- [x] _Shuffle without repeating recent songs, and repeat (2026-10-12)_
 
 - [ ] Favorites and playlists
 - [ ] Play counts and your most played songs
 - [ ] Home page with albums, artists, genres and years
-- [ ] Shuffle without repeating recent songs, and repeat
 - [ ] Crossfade and an equalizer
 - [ ] Color themes and a language picker (Portuguese first)
 - [ ] Discord "Listening to" status
