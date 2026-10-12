@@ -33,6 +33,9 @@ plays it. No server, no import step, and it never renames or moves your files.
 - **Playback:** double-click a song to play it, then play and pause, next and
   previous, and a timeline to jump anywhere in the song. When a song ends, the
   next one starts.
+- **Search** the whole library from the top bar (Ctrl+F): by title, artist or album,
+  in any word order, ignoring accents and punctuation, in any language. Matching
+  folders show up too.
 - **Keyboard shortcuts:** Space to play or pause, the arrows to jump 5 seconds,
   Ctrl with the arrows for previous, next and volume, M to mute, Backspace (or
   the mouse back button) to go up a folder. Press `?` to see them all.
@@ -105,9 +108,10 @@ pushed to the main branch.
 - [x] _Media keys, headphone buttons and the system's media controls (2026-09-28)_
 - [x] _Settings page (menu or Ctrl+,), with an option to hide files that can't
       play (2026-10-01)_
+- [x] _Search songs and folders (Ctrl+F), ignoring accents, punctuation and word
+      order (2026-10-12)_
 
 - [ ] Album covers
-- [ ] Search, ignoring accents, punctuation and word order
 - [ ] Sort by any column
 - [ ] Favorites and playlists
 - [ ] Play counts and your most played songs

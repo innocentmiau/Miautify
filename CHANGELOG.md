@@ -10,6 +10,9 @@ All notable changes to Miautify are listed here, newest first. The format follow
 
 - A Settings page, from the menu or with Ctrl+,: all the options in one place.
 - An option to hide files that can't play.
+- Search (Ctrl+F) across the whole library: songs by title, artist or album (or file
+  name, for untagged files), and folders by name. Words can come in any order;
+  accents, punctuation and case are ignored, in any script.
 
 ### Changed
 
