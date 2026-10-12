@@ -11,7 +11,15 @@ import {
   withDefaults,
 } from "../shared/preferences.js";
 import { isSongSort, type SongSort } from "../shared/sort.js";
-import { handleMediaProtocol, knownSong, registerMediaScheme, rememberSongs } from "./media.js";
+import { CoverCache, coverWorker } from "./covers.js";
+import {
+  handleMediaProtocol,
+  knownSong,
+  makeThumbnail,
+  registerMediaScheme,
+  rememberSongs,
+  thumbnailSize,
+} from "./media.js";
 import { scanFolder, songsFromCache } from "./scanner.js";
 import { Storage } from "./storage.js";
 
@@ -204,7 +212,15 @@ app.whenReady().then(() => {
   // userData is the app's own data folder, for example ~/.config/Miautify on Linux and
   // %APPDATA%\Miautify on Windows.
   storage = new Storage(path.join(app.getPath("userData"), "miautify.db"));
-  handleMediaProtocol();
+  // Thumbnails go in a folder named after their size, so changing the size later starts a
+  // fresh folder instead of mixing old and new.
+  const covers = new CoverCache({
+    folder: path.join(app.getPath("userData"), "covers", String(thumbnailSize)),
+    store: storage,
+    find: coverWorker(),
+    makeThumbnail,
+  });
+  handleMediaProtocol(covers);
   createWindow();
 
   // macOS keeps apps running with no windows; clicking the dock icon should reopen one.

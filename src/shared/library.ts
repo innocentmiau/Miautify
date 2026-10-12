@@ -85,3 +85,8 @@ export const mediaScheme = "miautify-media";
 export function songUrl(id: string): string {
   return `${mediaScheme}://song/${encodeURIComponent(id)}`;
 }
+
+// The song's cover as a small JPEG, or a 404 if it has none (see src/main/covers.ts).
+export function coverUrl(id: string): string {
+  return `${mediaScheme}://cover/${encodeURIComponent(id)}`;
+}

@@ -1,8 +1,9 @@
 import { createReadStream } from "node:fs";
-import { stat } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { Readable } from "node:stream";
-import { protocol } from "electron";
+import { nativeImage, protocol } from "electron";
 import { mediaScheme, type Song } from "../shared/library.js";
+import type { CoverCache } from "./covers.js";
 
 // Every song found by a scan in this session, by id. Songs from an earlier folder stay
 // here, so a song keeps streaming after the user picks a different folder.
@@ -20,28 +21,77 @@ export function rememberSongs(songs: Song[]): void {
 
 // Must run before the app is ready. `stream` lets <audio> start playing before the whole
 // response has arrived. `corsEnabled` lets responses opt in to being read by the page
-// (see the Access-Control-Allow-Origin header below).
+// (see the Access-Control-Allow-Origin header below). `supportFetchAPI` lets the page
+// download a cover with fetch(), to hand it to the OS media controls (media-session.ts).
 export function registerMediaScheme(): void {
   protocol.registerSchemesAsPrivileged([
     {
       scheme: mediaScheme,
-      privileges: { standard: true, secure: true, stream: true, corsEnabled: true },
+      privileges: {
+        standard: true,
+        secure: true,
+        stream: true,
+        corsEnabled: true,
+        supportFetchAPI: true,
+      },
     },
   ]);
 }
 
-// Serves miautify-media://song/<id>. Only songs a scan found can be served, so the page
-// can't use this to read any other file.
-export function handleMediaProtocol(): void {
+// Serves miautify-media://song/<id> (the audio) and miautify-media://cover/<id> (its cover
+// thumbnail). Only songs a scan found can be served, so the page can't use this to read any
+// other file.
+export function handleMediaProtocol(covers: CoverCache): void {
   protocol.handle(mediaScheme, async (request) => {
     const url = new URL(request.url);
-    const song =
-      url.hostname === "song" ? knownSongs.get(decodeURIComponent(url.pathname.slice(1))) : null;
-    if (!song) {
-      return new Response(null, { status: 404 });
+    const song = knownSongs.get(decodeURIComponent(url.pathname.slice(1)));
+    if (song && url.hostname === "song") {
+      return serveFile(song.path, request.headers.get("range"));
     }
-    return serveFile(song.path, request.headers.get("range"));
+    if (song && url.hostname === "cover") {
+      return serveCover(covers, song.path);
+    }
+    return new Response(null, { status: 404 });
   });
+}
+
+// A 404 means "no cover", and the page shows its placeholder instead.
+async function serveCover(covers: CoverCache, file: string): Promise<Response> {
+  try {
+    const thumbnail = await covers.thumbnailFor(file);
+    if (thumbnail) {
+      return new Response(await readFile(thumbnail), {
+        headers: { "Content-Type": "image/jpeg", "Access-Control-Allow-Origin": "*" },
+      });
+    }
+  } catch (error) {
+    console.warn(`Could not get the cover of ${file}:`, error);
+  }
+  return new Response(null, { status: 404 });
+}
+
+// Thumbnails fit in this many pixels each way. The biggest cover on screen is smaller, with
+// room for high-resolution screens.
+export const thumbnailSize = 256;
+
+// Shrinks a cover picture to a JPEG thumbnail, keeping its shape. Null if Electron can't
+// read it as an image (a broken picture, or a format it doesn't know).
+export function makeThumbnail(data: Uint8Array): Buffer | null {
+  const image = nativeImage.createFromBuffer(Buffer.from(data));
+  if (image.isEmpty()) {
+    return null;
+  }
+  const { width, height } = image.getSize();
+  const scale = Math.min(1, thumbnailSize / Math.max(width, height));
+  const resized =
+    scale < 1
+      ? image.resize({
+          width: Math.round(width * scale),
+          height: Math.round(height * scale),
+          quality: "good",
+        })
+      : image;
+  return resized.toJPEG(85);
 }
 
 // <audio> only lets you seek when the server answers Range requests with 206 Partial
