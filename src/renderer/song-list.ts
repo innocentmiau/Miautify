@@ -12,6 +12,8 @@ export interface SongListOptions {
   unplayableLabel: string;
   // A song was double-clicked, by its position in the list.
   onPlay(index: number): void;
+  // A column title was clicked, by its position in `columns`.
+  onSort(column: number): void;
 }
 
 // Every row is this tall, so row i always starts at i * rowHeight (see virtual.ts).
@@ -33,6 +35,7 @@ export class SongList {
   readonly #options: SongListOptions;
   readonly #header = document.createElement("div");
   readonly #body = document.createElement("div");
+  readonly #headerCells: HTMLDivElement[] = [];
   readonly #rows: HTMLDivElement[] = [];
   #songs: readonly Song[] = [];
   #framePending = false;
@@ -48,11 +51,17 @@ export class SongList {
 
     this.#header.className = "song-list-header";
     this.#header.setAttribute("role", "row");
-    for (const title of options.columns) {
+    // Each title is a button, so sorting works from the keyboard too.
+    for (const [index, title] of options.columns.entries()) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = title;
+      button.addEventListener("click", () => options.onSort(index));
       const cell = document.createElement("div");
       cell.setAttribute("role", "columnheader");
-      cell.textContent = title;
+      cell.append(button);
       this.#header.append(cell);
+      this.#headerCells.push(cell);
     }
 
     this.#body.className = "song-list-body";
@@ -77,6 +86,18 @@ export class SongList {
     this.element.setAttribute("aria-rowcount", String(songs.length + 1));
     this.#body.style.height = `${songs.length * rowHeight}px`;
     this.#render({ refill: true });
+  }
+
+  // Marks the column the list is sorted by (null: none). The arrow is drawn by the CSS
+  // from aria-sort, which also tells screen readers.
+  setSortedColumn(column: number | null, descending: boolean): void {
+    for (const [index, cell] of this.#headerCells.entries()) {
+      if (index === column) {
+        cell.setAttribute("aria-sort", descending ? "descending" : "ascending");
+      } else {
+        cell.removeAttribute("aria-sort");
+      }
+    }
   }
 
   // Redraws the rows on screen, for example after the playing song changed.

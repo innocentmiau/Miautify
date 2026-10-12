@@ -1,6 +1,7 @@
 import { fallbackLanguage, initI18n } from "../shared/i18n.js";
 import type { Song } from "../shared/library.js";
 import { defaultPreferences, type PreferenceKey, type Preferences } from "../shared/preferences.js";
+import { nextSort, type SongSort, sortColumns, sortSongs } from "../shared/sort.js";
 import { FolderTree } from "./folder-tree.js";
 import { buildFolderTree, type Folder, findFolder, folderOfSong, songsShown } from "./folders.js";
 import { connectMediaSession } from "./media-session.js";
@@ -85,6 +86,13 @@ const folderResultLimit = 24;
 // song after it, so a folder plays like a playlist.
 let listedSongs: Song[] = [];
 
+// The column the list is sorted by (clicking a column title), or null for the folder's own
+// order. One sort for every folder and for search results, remembered between launches.
+let sort: SongSort | null = null;
+// One collator for every comparison: creating one per comparison is far slower. numeric
+// sorts "Track 9" before "Track 10".
+const collator = new Intl.Collator(language, { numeric: true });
+
 // Above the songs: the path to the open folder, then its subfolders.
 const breadcrumb = document.createElement("nav");
 breadcrumb.className = "breadcrumb";
@@ -141,6 +149,7 @@ menu.className = "menu";
 menu.append(foldersHeading, folderTree.element, menuActions);
 
 const songList = new SongList(content, {
+  // Same order as sortColumns in shared/sort.ts, so a column's position is its sort.
   columns: [t("song.title"), t("song.artist"), t("song.album"), t("song.duration")],
   // Files without a title tag are shown by their file name.
   cells: (song) => [
@@ -152,7 +161,17 @@ const songList = new SongList(content, {
   isPlaying: (song) => song.id === player.current?.id,
   unplayableLabel: t("player.unplayable"),
   onPlay: (index) => player.playFrom(listedSongs, index),
+  onSort: (column) => {
+    sort = nextSort(sort, sortColumns[column]);
+    window.miautify.saveSort(sort);
+    showSortedColumn();
+    refreshView();
+  },
 });
+
+function showSortedColumn(): void {
+  songList.setSortedColumn(sort ? sortColumns.indexOf(sort.column) : null, !!sort?.descending);
+}
 
 // Icon shapes (SVG path data, on a 24 by 24 grid).
 const playIconPath = "M8 5v14l11-7z";
@@ -522,6 +541,8 @@ async function restoreLastSession(): Promise<void> {
     const { folder, lastSongId, volume, muted } = state;
     savedSongId = lastSongId;
     preferences = state.preferences;
+    sort = state.sort;
+    showSortedColumn();
     aboutText.textContent = t("settings.version", { version: state.version });
     if (volume !== null) {
       player.volume = volume;
@@ -665,9 +686,11 @@ function showResults({ keepScroll = false } = {}): void {
   }
   const scrollTop = content.scrollTop;
   const found = songSearch.search(searchQuery);
-  listedSongs = preferences["library.hideUnplayable"]
-    ? found.filter((song) => !song.unplayable)
-    : found;
+  listedSongs = sortSongs(
+    preferences["library.hideUnplayable"] ? found.filter((song) => !song.unplayable) : found,
+    sort,
+    collator,
+  );
   // One letter matches nearly every folder name, so folders wait for two.
   const folders =
     searchQuery.trim().length >= 2 ? searchFolders(tree, searchQuery, folderResultLimit) : [];
@@ -704,10 +727,10 @@ function showFolder(folder: Folder, { keepScroll = false } = {}): void {
   const scrollTop = content.scrollTop;
   openFolder = folder;
   // What's listed is what plays: double-clicking queues from this same list.
-  listedSongs = songsShown(
-    folder,
-    preferences["library.showAllSongs"],
-    preferences["library.hideUnplayable"],
+  listedSongs = sortSongs(
+    songsShown(folder, preferences["library.showAllSongs"], preferences["library.hideUnplayable"]),
+    sort,
+    collator,
   );
   folderTree.setOpen(folder);
   renderBreadcrumb(folder);

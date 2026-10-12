@@ -456,6 +456,40 @@ input.toggle-switch:checked::before {
   color: var(--text-muted);
 }
 
+/* Column titles are buttons (click to sort) that look like plain text. */
+.song-list-header button {
+  max-width: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.song-list-header button:hover,
+.song-list-header [aria-sort] button {
+  color: var(--text);
+}
+
+/* The sorted column gets an arrow: up for A to Z, down for Z to A. */
+.song-list-header [aria-sort] button::after {
+  margin-left: 4px;
+  color: var(--accent);
+  font-size: 0.7em;
+}
+
+.song-list-header [aria-sort="ascending"] button::after {
+  content: "\25B2";
+}
+
+.song-list-header [aria-sort="descending"] button::after {
+  content: "\25BC";
+}
+
 /* Holds the rows; its height (set from song-list.ts) is all rows together. */
 .song-list-body {
   position: relative;
