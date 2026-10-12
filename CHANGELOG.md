@@ -16,6 +16,10 @@ All notable changes to Miautify are listed here, newest first. The format follow
 - Sort the song list by any column: click a column title for A to Z, again for Z to A,
   and a third time to go back to the folder's order. Songs play in the sorted order, and
   the sort is remembered.
+- Album covers in the song list, the player bar, on folder tiles (the folder's first
+  song) and in the system's media controls. They come from the picture inside the mp3,
+  or from a cover.jpg, folder.jpg, front.jpg or album.jpg in the same folder. Each
+  picture is shrunk once to a small thumbnail and kept in the app's data folder.
 
 ### Changed
 

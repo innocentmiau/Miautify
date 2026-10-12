@@ -36,6 +36,9 @@ plays it. No server, no import step, and it never renames or moves your files.
 - **Search** the whole library from the top bar (Ctrl+F): by title, artist or album,
   in any word order, ignoring accents and punctuation, in any language. Matching
   folders show up too.
+- **Album covers** in the list, the player bar, on folder tiles and in the system's
+  media controls: the picture inside the mp3, or a `cover.jpg` or `folder.jpg` next
+  to it. They're shrunk once and kept small, so big libraries stay fast.
 - **Sort by any column:** click a column title to sort by it, again to reverse,
   and a third time for the folder's own order. Songs play in the order shown.
 - **Keyboard shortcuts:** Space to play or pause, the arrows to jump 5 seconds,
@@ -50,7 +53,7 @@ plays it. No server, no import step, and it never renames or moves your files.
 - **Volume and mute**, remembered between launches. The slider follows how
   loudness is heard, so the whole range is useful.
 - **Your files stay yours.** Miautify only reads the music folder. Its own data
-  (settings and the tag cache) lives in the app's data folder:
+  (settings, the tag cache and cover thumbnails) lives in the app's data folder:
   `~/.config/Miautify` on Linux, `%APPDATA%\Miautify` on Windows.
 
 ## Install
@@ -113,8 +116,8 @@ pushed to the main branch.
 - [x] _Search songs and folders (Ctrl+F), ignoring accents, punctuation and word
       order (2026-10-12)_
 - [x] _Sort by any column (2026-10-12)_
+- [x] _Album covers (2026-10-12)_
 
-- [ ] Album covers
 - [ ] Favorites and playlists
 - [ ] Play counts and your most played songs
 - [ ] Home page with albums, artists, genres and years
