@@ -31,7 +31,7 @@ describe("Storage", () => {
 
       const second = new Storage(file);
       assert.equal(second.get("player.lastSongId"), "abc123");
-      assert.equal(second.version, 4); // Reopening doesn't run the migrations again.
+      assert.equal(second.version, 5); // Reopening doesn't run the migrations again.
       second.close();
     } finally {
       rmSync(folder, { recursive: true, force: true });
@@ -83,6 +83,20 @@ describe("Storage", () => {
     // The file changed (the scanner re-read it): it gets another chance.
     storage.saveScan([{ path: "/m/a.mp3", size: 12, mtimeMs: 2 }], []);
     assert.equal(storage.cachedSongs().get("/m/a.mp3")?.unplayable, undefined);
+  });
+
+  it("remembers when each song last played", () => {
+    const storage = new Storage(":memory:");
+    storage.notePlayed("song1", 100);
+    storage.notePlayed("song2", 200);
+    storage.notePlayed("song1", 300); // Played again: only the latest time is kept.
+    assert.deepEqual(
+      new Map(storage.lastPlayed()),
+      new Map([
+        ["song1", 300],
+        ["song2", 200],
+      ]),
+    );
   });
 
   it("remembers each song's cover until the file changes", () => {

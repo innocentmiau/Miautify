@@ -19,6 +19,8 @@ const api: MiautifyApi = {
   setLastSong: (id) => ipcRenderer.send(ipcChannels.setLastSong, id),
   saveVolume: (level, muted) => ipcRenderer.send(ipcChannels.saveVolume, level, muted),
   saveSort: (sort) => ipcRenderer.send(ipcChannels.saveSort, sort),
+  savePlayMode: (shuffle, repeat) => ipcRenderer.send(ipcChannels.savePlayMode, shuffle, repeat),
+  notePlayed: (id) => ipcRenderer.send(ipcChannels.notePlayed, id),
   setPreference: (key, value) => ipcRenderer.send(ipcChannels.setPreference, key, value),
   markUnplayable: (id) => ipcRenderer.send(ipcChannels.markUnplayable, id),
 };

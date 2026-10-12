@@ -18,6 +18,14 @@ export interface Song {
   unplayable?: boolean;
 }
 
+// Repeat: off, the whole list ("all"), or the current song ("one").
+export const repeatModes = ["off", "all", "one"] as const;
+export type RepeatMode = (typeof repeatModes)[number];
+
+export function isRepeatMode(value: unknown): value is RepeatMode {
+  return repeatModes.includes(value as RepeatMode);
+}
+
 // What the page needs to restore the last session on launch.
 export interface StartupState {
   // The folder chosen last time, or null if there is none or it no longer exists.
@@ -28,6 +36,10 @@ export interface StartupState {
   muted: boolean;
   // The column the song list is sorted by, or null for the folder's own order.
   sort: SongSort | null;
+  shuffle: boolean;
+  repeat: RepeatMode;
+  // When each song last started playing, as [song id, time] pairs.
+  lastPlayed: [string, number][];
   // Every preference, saved or default.
   preferences: Preferences;
   // The app's version, for the About section of Settings.
@@ -58,6 +70,10 @@ export interface MiautifyApi {
   saveVolume(level: number, muted: boolean): void;
   // Remembers the song list's sort (null: the folder's own order).
   saveSort(sort: SongSort | null): void;
+  // Remembers the shuffle and repeat buttons.
+  savePlayMode(shuffle: boolean, repeat: RepeatMode): void;
+  // Adds a song that started playing to the play history.
+  notePlayed(id: string): void;
   // Saves one preference from the Settings page. Main refuses unknown keys and values of
   // the wrong type.
   setPreference<K extends PreferenceKey>(key: K, value: Preferences[K]): void;
@@ -74,6 +90,8 @@ export const ipcChannels = {
   setLastSong: "player:set-last-song",
   saveVolume: "player:save-volume",
   saveSort: "library:save-sort",
+  savePlayMode: "player:save-play-mode",
+  notePlayed: "player:note-played",
   setPreference: "settings:set-preference",
   markUnplayable: "library:mark-unplayable",
 } as const;

@@ -2,7 +2,14 @@ import { stat } from "node:fs/promises";
 import path from "node:path";
 import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import { initI18n, pickLanguage } from "../shared/i18n.js";
-import { ipcChannels, type ScanOutcome, type Song, type StartupState } from "../shared/library.js";
+import {
+  ipcChannels,
+  isRepeatMode,
+  type RepeatMode,
+  type ScanOutcome,
+  type Song,
+  type StartupState,
+} from "../shared/library.js";
 import {
   defaultPreferences,
   isValidPreference,
@@ -73,6 +80,9 @@ ipcMain.handle(ipcChannels.getStartupState, async (): Promise<StartupState> => {
     volume: storage.get("player.volume") ?? null,
     muted: storage.get("player.muted") ?? false,
     sort: savedSort(),
+    shuffle: storage.get("player.shuffle") ?? false,
+    repeat: savedRepeat(),
+    lastPlayed: storage.lastPlayed(),
     preferences: savedPreferences(),
     version: app.getVersion(),
   };
@@ -144,6 +154,26 @@ ipcMain.on(ipcChannels.saveVolume, (_event, level: unknown, muted: unknown) => {
   if (typeof level === "number" && level >= 0 && level <= 1 && typeof muted === "boolean") {
     storage.set("player.volume", level);
     storage.set("player.muted", muted);
+  }
+});
+
+ipcMain.on(ipcChannels.savePlayMode, (_event, shuffle: unknown, repeat: unknown) => {
+  if (typeof shuffle === "boolean" && isRepeatMode(repeat)) {
+    storage.set("player.shuffle", shuffle);
+    storage.set("player.repeat", repeat);
+  }
+});
+
+// Checked like the sort: a mode could be renamed in a later version.
+function savedRepeat(): RepeatMode {
+  const repeat = storage.get("player.repeat");
+  return isRepeatMode(repeat) ? repeat : "off";
+}
+
+ipcMain.on(ipcChannels.notePlayed, (_event, id: unknown) => {
+  // Only songs from a scan; the time is taken here, not from the page.
+  if (typeof id === "string" && knownSong(id)) {
+    storage.notePlayed(id, Date.now());
   }
 });
 

@@ -1,4 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
+import type { RepeatMode } from "../shared/library.js";
 import type { Preferences } from "../shared/preferences.js";
 import type { SongSort } from "../shared/sort.js";
 import type { CachedSong } from "./scanner.js";
@@ -12,6 +13,8 @@ export interface Settings extends Preferences {
   // Volume slider position, 0 to 1 (not the gain: see src/renderer/volume.ts).
   "player.volume": number;
   "player.muted": boolean;
+  "player.shuffle": boolean;
+  "player.repeat": RepeatMode;
   // Not set while the list is in the folder's own order.
   "library.sort": SongSort;
 }
@@ -35,6 +38,9 @@ const migrations: string[] = [
   "ALTER TABLE songs ADD COLUMN unplayable INTEGER NOT NULL DEFAULT 0",
   // 4: each song's cover: the thumbnail's hash, "" for none, NULL if not looked up yet.
   "ALTER TABLE songs ADD COLUMN cover TEXT",
+  // 5: when each song last started playing (ms since 1970), for shuffle. By song id, not
+  // in the songs table: the history outlives rescans and folder changes.
+  "CREATE TABLE last_played (song_id TEXT PRIMARY KEY, played_at INTEGER NOT NULL) STRICT",
 ];
 
 // The app's SQLite database. Lives in the app's data folder, never in the music folder:
@@ -136,6 +142,22 @@ export class Storage {
 
   setCover(path: string, hash: string): void {
     this.#db.prepare("UPDATE songs SET cover = ? WHERE path = ?").run(hash, path);
+  }
+
+  // Remembers that a song started playing at `time`.
+  notePlayed(songId: string, time: number): void {
+    this.#db
+      .prepare(
+        "INSERT INTO last_played (song_id, played_at) VALUES (?, ?) " +
+          "ON CONFLICT (song_id) DO UPDATE SET played_at = excluded.played_at",
+      )
+      .run(songId, time);
+  }
+
+  // When each song last started playing, as [song id, time] pairs.
+  lastPlayed(): [string, number][] {
+    const rows = this.#db.prepare("SELECT song_id, played_at FROM last_played").all();
+    return rows.map((row) => [String(row.song_id), Number(row.played_at)]);
   }
 
   close(): void {
