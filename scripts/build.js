@@ -9,9 +9,10 @@ rmSync("dist", { recursive: true, force: true });
 
 await buildIcons();
 
+// The cover worker (src/main/cover-worker.ts) runs as its own thread, so it's its own file.
 await build({
-  entryPoints: ["src/main/main.ts"],
-  outfile: "dist/main/main.js",
+  entryPoints: ["src/main/main.ts", "src/main/cover-worker.ts"],
+  outdir: "dist/main",
   bundle: true,
   platform: "node",
   format: "esm",
