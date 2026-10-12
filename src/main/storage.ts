@@ -33,6 +33,8 @@ const migrations: string[] = [
   ) STRICT`,
   // 3: files that failed to play. Existing rows start as playable (0).
   "ALTER TABLE songs ADD COLUMN unplayable INTEGER NOT NULL DEFAULT 0",
+  // 4: each song's cover: the thumbnail's hash, "" for none, NULL if not looked up yet.
+  "ALTER TABLE songs ADD COLUMN cover TEXT",
 ];
 
 // The app's SQLite database. Lives in the app's data folder, never in the music folder:
@@ -97,8 +99,8 @@ export class Storage {
          size = excluded.size, mtime_ms = excluded.mtime_ms, title = excluded.title,
          artist = excluded.artist, album = excluded.album,
          duration_seconds = excluded.duration_seconds,
-         -- The file changed, so it gets another chance to play.
-         unplayable = 0`,
+         -- The file changed, so it gets another chance to play, and its cover may be new.
+         unplayable = 0, cover = NULL`,
     );
     const remove = this.#db.prepare("DELETE FROM songs WHERE path = ?");
 
@@ -123,6 +125,17 @@ export class Storage {
   // Remembers that a file failed to play, until it changes (see saveScan).
   markUnplayable(path: string): void {
     this.#db.prepare("UPDATE songs SET unplayable = 1 WHERE path = ?").run(path);
+  }
+
+  // The song's cover hash, "" if it has none, or undefined if it was never looked up (see
+  // main/covers.ts).
+  coverOf(path: string): string | undefined {
+    const row = this.#db.prepare("SELECT cover FROM songs WHERE path = ?").get(path);
+    return (row?.cover as string | null | undefined) ?? undefined;
+  }
+
+  setCover(path: string, hash: string): void {
+    this.#db.prepare("UPDATE songs SET cover = ? WHERE path = ?").run(hash, path);
   }
 
   close(): void {

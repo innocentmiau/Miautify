@@ -31,7 +31,7 @@ describe("Storage", () => {
 
       const second = new Storage(file);
       assert.equal(second.get("player.lastSongId"), "abc123");
-      assert.equal(second.version, 3); // Reopening doesn't run the migrations again.
+      assert.equal(second.version, 4); // Reopening doesn't run the migrations again.
       second.close();
     } finally {
       rmSync(folder, { recursive: true, force: true });
@@ -83,5 +83,20 @@ describe("Storage", () => {
     // The file changed (the scanner re-read it): it gets another chance.
     storage.saveScan([{ path: "/m/a.mp3", size: 12, mtimeMs: 2 }], []);
     assert.equal(storage.cachedSongs().get("/m/a.mp3")?.unplayable, undefined);
+  });
+
+  it("remembers each song's cover until the file changes", () => {
+    const storage = new Storage(":memory:");
+    storage.saveScan([{ path: "/m/a.mp3", size: 10, mtimeMs: 1 }], []);
+    assert.equal(storage.coverOf("/m/a.mp3"), undefined); // Never looked up.
+
+    storage.setCover("/m/a.mp3", "");
+    assert.equal(storage.coverOf("/m/a.mp3"), ""); // Looked up: none.
+    storage.setCover("/m/a.mp3", "abc");
+    assert.equal(storage.coverOf("/m/a.mp3"), "abc");
+
+    // The file changed (new tags may mean a new cover): it's looked up again.
+    storage.saveScan([{ path: "/m/a.mp3", size: 12, mtimeMs: 2 }], []);
+    assert.equal(storage.coverOf("/m/a.mp3"), undefined);
   });
 });
