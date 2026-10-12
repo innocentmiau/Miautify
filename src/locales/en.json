@@ -33,7 +33,11 @@
     "mute": "Mute",
     "unmute": "Unmute",
     "unplayable": "Can't play this file",
-    "cantPlay": "Can't play {{name}}"
+    "cantPlay": "Can't play {{name}}",
+    "shuffle": "Shuffle",
+    "repeatOff": "Repeat is off",
+    "repeatAll": "Repeating the list",
+    "repeatOne": "Repeating this song"
   },
   "menu": {
     "label": "Main menu",
@@ -55,7 +59,9 @@
     "parentFolder": "Go up one folder (also the mouse back button)",
     "showShortcuts": "Show this list",
     "openSettings": "Open settings",
-    "focusSearch": "Search"
+    "focusSearch": "Search",
+    "toggleShuffle": "Shuffle on or off",
+    "cycleRepeat": "Repeat: off, the list, or the song"
   },
   "keys": {
     "ctrl": "Ctrl",

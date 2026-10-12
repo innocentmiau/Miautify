@@ -1,5 +1,5 @@
 import { fallbackLanguage, initI18n } from "../shared/i18n.js";
-import { coverUrl, type Song } from "../shared/library.js";
+import { coverUrl, type RepeatMode, repeatModes, type Song } from "../shared/library.js";
 import { defaultPreferences, type PreferenceKey, type Preferences } from "../shared/preferences.js";
 import { nextSort, type SongSort, sortColumns, sortSongs } from "../shared/sort.js";
 import { createCover, setCover } from "./cover.js";
@@ -187,6 +187,11 @@ const volumeLowIconPath =
   "M18.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z";
 const menuIconPath = "M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z";
 const musicNoteIconPath = "M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z";
+const shuffleIconPath =
+  "M10.59 9.17 5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z";
+const repeatIconPath = "M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z";
+const repeatOneIconPath =
+  "M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4zm-4-2V9h-1l-2 1v1h1.5v4H13z";
 const folderIconPath =
   "M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z";
 const volumeOffIconPath =
@@ -204,9 +209,16 @@ toggleButton.addEventListener("click", () => player.toggle());
 const nextButton = iconButton(nextIconPath, t("player.next"));
 nextButton.addEventListener("click", () => player.next());
 
+// Shuffle and repeat, on either side. Shown in the accent color while on.
+const shuffleButton = iconButton(shuffleIconPath, t("player.shuffle"));
+shuffleButton.addEventListener("click", () => toggleShuffle());
+
+const repeatButton = iconButton(repeatIconPath, t("player.repeatOff"));
+repeatButton.addEventListener("click", () => cycleRepeat());
+
 const buttons = document.createElement("div");
 buttons.className = "buttons";
-buttons.append(previousButton, toggleButton, nextButton);
+buttons.append(shuffleButton, previousButton, toggleButton, nextButton, repeatButton);
 
 const nowTitle = document.createElement("span");
 nowTitle.className = "now-title";
@@ -403,6 +415,12 @@ function runShortcut(action: Action): void {
       searchBox.focus();
       searchBox.select();
       break;
+    case "toggleShuffle":
+      toggleShuffle();
+      break;
+    case "cycleRepeat":
+      cycleRepeat();
+      break;
   }
 }
 
@@ -467,6 +485,28 @@ function setPreference<K extends PreferenceKey>(key: K, value: Preferences[K]): 
   // Both library preferences change what's listed, so show it again.
   refreshView({ keepScroll: true });
 }
+
+function toggleShuffle(): void {
+  player.shuffle = !player.shuffle;
+  savePlayMode();
+}
+
+// Off, then the whole list, then the current song, then off again.
+function cycleRepeat(): void {
+  player.repeat = repeatModes[(repeatModes.indexOf(player.repeat) + 1) % repeatModes.length];
+  savePlayMode();
+}
+
+function savePlayMode(): void {
+  window.miautify.savePlayMode(player.shuffle, player.repeat);
+}
+
+// Every song that starts playing goes into the play history, so shuffle can deal recently
+// heard songs last, in this session and the next.
+player.addEventListener("played", (event) => {
+  const { song } = (event as CustomEvent<{ song: Song }>).detail;
+  window.miautify.notePlayed(song.id);
+});
 
 // The id last sent to be remembered, so it's only sent when the song actually changes.
 let savedSongId: string | null = null;
@@ -552,6 +592,9 @@ async function restoreLastSession(): Promise<void> {
     savedSongId = lastSongId;
     preferences = state.preferences;
     sort = state.sort;
+    player.shuffle = state.shuffle;
+    player.repeat = state.repeat;
+    player.setPlayHistory(state.lastPlayed);
     showSortedColumn();
     aboutText.textContent = t("settings.version", { version: state.version });
     if (volume !== null) {
@@ -864,6 +907,26 @@ function updatePlayerBar(): void {
   toggleButton.replaceChildren(icon(player.isPlaying ? pauseIconPath : playIconPath));
   previousButton.disabled = !player.hasPrevious;
   nextButton.disabled = !player.hasNext;
+  updatePlayModeButtons();
+}
+
+const repeatLabels: Record<RepeatMode, string> = {
+  off: t("player.repeatOff"),
+  all: t("player.repeatAll"),
+  one: t("player.repeatOne"),
+};
+
+// Shuffle is a switch (aria-pressed). Repeat has three states, so its label says which one
+// it's in, and "one" gets its own icon.
+function updatePlayModeButtons(): void {
+  shuffleButton.classList.toggle("active", player.shuffle);
+  shuffleButton.setAttribute("aria-pressed", String(player.shuffle));
+
+  const mode = player.repeat;
+  repeatButton.classList.toggle("active", mode !== "off");
+  repeatButton.title = repeatLabels[mode];
+  repeatButton.setAttribute("aria-label", repeatLabels[mode]);
+  repeatButton.replaceChildren(icon(mode === "one" ? repeatOneIconPath : repeatIconPath));
 }
 
 // Updates the seek row to show `seconds` into the current song.

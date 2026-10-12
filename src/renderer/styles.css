@@ -752,13 +752,36 @@ input.toggle-switch:checked::before {
   fill: var(--text-muted);
 }
 
-.icon-button:hover:not(:disabled) svg {
+/* Shuffle or repeat while on (see below). */
+.icon-button.active svg {
+  fill: var(--accent);
+}
+
+.icon-button:hover:not(:disabled, .active) svg {
   fill: var(--text);
 }
 
 .icon-button:disabled {
   opacity: 0.35;
   cursor: default;
+}
+
+/* Shuffle or repeat while on: accent color, and a dot under the icon so it doesn't rely on
+   color alone. */
+.icon-button.active {
+  position: relative;
+}
+
+.icon-button.active::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: var(--accent);
 }
 
 /* The playing song: cover, then title above artist. */

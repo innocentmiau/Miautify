@@ -1,5 +1,5 @@
-import { type Song, songUrl } from "../shared/library.js";
-import { Queue } from "./queue.js";
+import { type RepeatMode, type Song, songUrl } from "../shared/library.js";
+import { PlayOrder } from "./play-order.js";
 import { clampLevel, defaultLevel, levelToGain } from "./volume.js";
 
 // The only code that touches the <audio> element. The UI calls its methods and listens to
@@ -13,13 +13,18 @@ import { clampLevel, defaultLevel, levelToGain } from "./volume.js";
 // - "volume": the volume level or mute changed.
 // - "unplayable": a song couldn't be played (detail: { song }). It's marked, and if it
 //   was meant to play, the next playable song starts instead.
+// - "played": a song started playing (detail: { song }), once per time it's loaded or
+//   repeated. Feeds the play history that shuffle uses.
 //
 // Sound path: <audio> -> Web Audio gain node (volume) -> speakers. Crossfade, EQ and
 // ducking will be more nodes in this chain, which is why volume doesn't just use the
 // <audio> element's own volume.
 export class Player extends EventTarget {
   #audio = new Audio();
-  #queue: Queue<Song> | null = null;
+  // What plays next, with shuffle and repeat (see play-order.ts).
+  #order = new PlayOrder<Song>({ key: (song) => song.id });
+  // The song last reported as "played", so pausing and resuming doesn't count again.
+  #countedSong: Song | null = null;
   // Whether the current song is meant to be playing (as opposed to loaded paused), so a
   // failure knows whether to move on to the next song.
   #wantsToPlay = false;
@@ -38,29 +43,74 @@ export class Player extends EventTarget {
     for (const event of ["play", "pause"]) {
       this.#audio.addEventListener(event, () => this.#changed());
     }
-    // Auto-advance. At the end of the queue, playback just stops.
+    // Auto-advance. At the end of the queue (without repeat), playback just stops.
     this.#audio.addEventListener("ended", () => {
-      if (!this.next()) {
+      const song = this.#order.afterEnd(isUnplayable);
+      if (song === this.current && song !== null) {
+        // Repeat one: start the same song over, without loading it again.
+        this.#countedSong = null;
+        this.#audio.currentTime = 0;
+        this.#resume();
+      } else if (song) {
+        this.#load(song);
+      } else {
         this.#changed();
       }
     });
     this.#audio.addEventListener("error", () => this.#failed());
+    // "playing": sound actually started, so a file that fails to load never counts. It
+    // also fires after pauses and buffering, so each song only counts once per load.
+    this.#audio.addEventListener("playing", () => {
+      const song = this.current;
+      if (song && song !== this.#countedSong) {
+        this.#countedSong = song;
+        this.#order.notePlayed(song);
+        this.dispatchEvent(new CustomEvent("played", { detail: { song } }));
+      }
+    });
     for (const event of ["timeupdate", "durationchange", "seeking"]) {
       this.#audio.addEventListener(event, () => this.dispatchEvent(new Event("time")));
     }
   }
 
   get current(): Song | null {
-    return this.#queue?.current ?? null;
+    return this.#order.current;
   }
 
   // Whether there's a playable song after or before the current one.
   get hasNext(): boolean {
-    return this.#queue?.hasNextMatching(isUnplayable) ?? false;
+    return this.#order.hasNext(isUnplayable);
   }
 
   get hasPrevious(): boolean {
-    return this.#queue?.hasPreviousMatching(isUnplayable) ?? false;
+    return this.#order.hasPrevious(isUnplayable);
+  }
+
+  get shuffle(): boolean {
+    return this.#order.shuffle;
+  }
+
+  // Applies to the songs after the current one, which keeps playing.
+  set shuffle(on: boolean) {
+    this.#order.setShuffle(on);
+    this.#changed();
+  }
+
+  get repeat(): RepeatMode {
+    return this.#order.repeat;
+  }
+
+  set repeat(mode: RepeatMode) {
+    this.#order.repeat = mode;
+    this.#changed(); // Next may be possible now (or no longer).
+  }
+
+  // When each song last started playing (song id, time), saved from earlier sessions.
+  // Shuffle deals recently heard songs last.
+  setPlayHistory(entries: Iterable<[string, number]>): void {
+    for (const [id, time] of entries) {
+      this.#order.lastPlayed.set(id, time);
+    }
   }
 
   get isPlaying(): boolean {
@@ -105,29 +155,30 @@ export class Player extends EventTarget {
     this.#audio.currentTime = Math.min(Math.max(seconds, 0), this.duration);
   }
 
-  // Starts a new queue: `songs[start]` and every song after it, in order.
+  // Starts playing `songs` from `songs[start]` (then the rest in order, or shuffled).
   playFrom(songs: readonly Song[], start: number): void {
-    const queue = new Queue(songs.slice(start));
-    if (isUnplayable(queue.current)) {
-      // Known not to play: say so, and start at the next song that can.
-      this.#announceUnplayable(queue.current);
-      if (!queue.next(isUnplayable)) {
-        return; // Nothing after it can play either: leave the player as it was.
-      }
+    if (isUnplayable(songs[start])) {
+      // Known not to play: say so. The next song that can play starts instead.
+      this.#announceUnplayable(songs[start]);
     }
-    this.#queue = queue;
-    this.#load(queue.current);
+    const song = this.#order.start(songs, start, isUnplayable);
+    if (song) {
+      this.#load(song);
+    }
+    // Null: nothing in the list can play, and whatever was playing carries on.
   }
 
-  // Same queue as playFrom, but paused: the song shows in the player bar, ready to play.
+  // Same as playFrom, but paused: the song shows in the player bar, ready to play.
   selectFrom(songs: readonly Song[], start: number): void {
-    this.#queue = new Queue(songs.slice(start));
-    this.#load(this.#queue.current, { autoplay: false });
+    const song = this.#order.start(songs, start);
+    if (song) {
+      this.#load(song, { autoplay: false });
+    }
   }
 
   // Returns false (and does nothing) at the end of the queue.
   next(): boolean {
-    const song = this.#queue?.next(isUnplayable);
+    const song = this.#order.next(isUnplayable);
     if (!song) {
       return false;
     }
@@ -137,7 +188,7 @@ export class Player extends EventTarget {
 
   // Returns false (and does nothing) at the start of the queue.
   previous(): boolean {
-    const song = this.#queue?.previous(isUnplayable);
+    const song = this.#order.previous(isUnplayable);
     if (!song) {
       return false;
     }
@@ -167,6 +218,7 @@ export class Player extends EventTarget {
 
   #load(song: Song, { autoplay = true } = {}): void {
     this.#wantsToPlay = autoplay;
+    this.#countedSong = null;
     this.#audio.src = songUrl(song.id);
     if (autoplay) {
       this.#resume();

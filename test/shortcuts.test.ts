@@ -30,6 +30,8 @@ describe("actionFor", () => {
     assert.equal(actionFor(press("m")), "toggleMute");
     assert.equal(actionFor(press("M")), "toggleMute");
     assert.equal(actionFor(press("?")), "showShortcuts");
+    assert.equal(actionFor(press("S")), "toggleShuffle");
+    assert.equal(actionFor(press("r")), "cycleRepeat");
   });
 
   it("ignores Ctrl on keys that don't use it, and Alt or Super on all keys", () => {
