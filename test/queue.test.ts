@@ -81,4 +81,28 @@ describe("Queue", () => {
       assert.equal(queue.hasNextMatching(broken), false);
     });
   });
+
+  describe("replacing what comes next", () => {
+    it("keeps what played and replaces only the rest", () => {
+      const queue = new Queue(["a", "b", "c", "d"]);
+      queue.next();
+      queue.setUpcoming(["x", "y"]);
+      assert.deepEqual(queue.played, ["a", "b"]);
+      assert.deepEqual(queue.upcoming, ["x", "y"]);
+      assert.equal(queue.next(), "x");
+      assert.equal(queue.previous(), "b");
+    });
+
+    it("adds to the end when nothing is left", () => {
+      const queue = new Queue(["a"]);
+      queue.setUpcoming(["b"]);
+      assert.equal(queue.next(), "b");
+    });
+
+    it("doesn't change the list it was made from", () => {
+      const items = ["a", "b"];
+      new Queue(items).setUpcoming([]);
+      assert.deepEqual(items, ["a", "b"]);
+    });
+  });
 });

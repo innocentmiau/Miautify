@@ -1,17 +1,19 @@
-// A fixed play order and a position in it. Next and previous only move the position, so
-// previous always goes back to the song that actually played before.
+// A play order and a position in it. Next and previous only move the position, so
+// previous always goes back to the song that actually played before. What comes after the
+// current item can be replaced (turning shuffle on or off, or starting another round of a
+// repeated list); what came before never changes.
 //
 // Pure logic with no audio or page code (and no imports), so it can be unit tested
 // directly with Node: see test/queue.test.ts.
 export class Queue<T> {
-  readonly #items: readonly T[];
+  readonly #items: T[];
   #position = 0;
 
   constructor(items: readonly T[]) {
     if (items.length === 0) {
       throw new RangeError("A queue needs at least one item.");
     }
-    this.#items = items;
+    this.#items = [...items];
   }
 
   get current(): T {
@@ -20,6 +22,21 @@ export class Queue<T> {
 
   get position(): number {
     return this.#position;
+  }
+
+  // The items up to and including the current one, in the order they played.
+  get played(): readonly T[] {
+    return this.#items.slice(0, this.#position + 1);
+  }
+
+  // The items after the current one.
+  get upcoming(): readonly T[] {
+    return this.#items.slice(this.#position + 1);
+  }
+
+  // Replaces everything after the current item.
+  setUpcoming(items: readonly T[]): void {
+    this.#items.splice(this.#position + 1, Number.POSITIVE_INFINITY, ...items);
   }
 
   get hasNext(): boolean {
