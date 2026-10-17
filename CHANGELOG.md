@@ -37,6 +37,14 @@ All notable changes to Miautify are listed here, newest first. The format follow
   space as the window grows. The volume slider is up to twice as wide as before.
 - A settings button at the right end of the toolbar (Settings stays in the menu too).
 
+### Fixed
+
+- Choosing another folder no longer keeps the song from the old one in the player, unless
+  the new folder has it too (for example a subfolder of the old one).
+- When the music folder is deleted or unplugged, Refresh now clears its path, song count,
+  list and the song in the player, leaving only "Could not read this folder.", like a
+  launch without the folder.
+
 ## [0.0.2] - 2026-09-28
 
 Test pre-release.
