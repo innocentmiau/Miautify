@@ -30,6 +30,8 @@ All notable changes to Miautify are listed here, newest first. The format follow
 
 - "Include subfolders" moved from the folder view into Settings.
 - The keyboard shortcuts list is now in Settings (`?` still shows it).
+- Song list columns are sized by what's in them. As the window grows, a column stops
+  growing once its longest text fits, and the others get that room instead.
 
 ## [0.0.2] - 2026-09-28
 
