@@ -474,11 +474,12 @@ input.toggle-switch:checked::before {
   font-size: 0.8rem;
 }
 
-/* Header and rows share the same columns: title, artist, album, duration. */
+/* Header and rows share the same columns: title, artist, album, duration. The first three
+   are sized from their text by song-list.ts (--columns); this default is used until then. */
 .song-list-header,
 .song-row {
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr) minmax(0, 2fr) 5em;
+  grid-template-columns: var(--columns, minmax(0, 3fr) minmax(0, 2fr) minmax(0, 2fr)) 5em;
   column-gap: 16px;
   align-items: center;
   padding: 0 16px;

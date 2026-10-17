@@ -152,6 +152,8 @@ menu.append(foldersHeading, folderTree.element, menuActions);
 const songList = new SongList(content, {
   // Same order as sortColumns in shared/sort.ts, so a column's position is its sort.
   columns: [t("song.title"), t("song.artist"), t("song.album"), t("song.duration")],
+  // The title grows fastest; the duration keeps its width.
+  weights: [3, 2, 2],
   // Files without a title tag are shown by their file name.
   cells: (song) => [
     song.title ?? song.fileName,

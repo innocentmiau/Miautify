@@ -1,10 +1,14 @@
 import type { Song } from "../shared/library.js";
+import { fitColumns } from "./column-widths.js";
 import { createCover, setCover } from "./cover.js";
 import { visibleRange } from "./virtual.js";
 
 export interface SongListOptions {
   // Column titles, in order.
   columns: string[];
+  // How fast each column grows with the window, compared with the others (see
+  // column-widths.ts). One per column except the last, which keeps its width from the CSS.
+  weights: number[];
   // The text of each column for one song, in the same order.
   cells(song: Song): string[];
   // Whether a song gets the "playing" highlight.
@@ -27,6 +31,10 @@ const overscan = 10;
 // Covers load once scrolling has paused this long, so flinging through thousands of songs
 // doesn't ask for thousands of covers on the way.
 const coverDelayMs = 150;
+// Room for the cover before the title: 28px picture + 10px gap (see styles.css).
+const coverSpace = 38;
+// A little extra per column, so rounding never cuts the widest text short by a pixel.
+const slack = 2;
 
 // A song list that only creates the rows on screen. However long the list, it keeps a
 // small pool of row elements and moves and refills them as you scroll, instead of one
@@ -46,6 +54,12 @@ export class SongList {
   readonly #headerCells: HTMLDivElement[] = [];
   readonly #rows: HTMLDivElement[] = [];
   #songs: readonly Song[] = [];
+  // Width each stretching column needs to show its widest text, or null when the songs
+  // changed and it has to be measured again.
+  #needs: number[] | null = null;
+  #measurer = document.createElement("canvas").getContext("2d");
+  // Text widths already measured, since artists and albums repeat a lot.
+  #textWidths = new Map<string, number>();
   #framePending = false;
   #coverTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -88,12 +102,17 @@ export class SongList {
     // Redraw when scrolled or resized, at most once per frame.
     scroller.addEventListener("scroll", () => this.#scheduleRender(), { passive: true });
     new ResizeObserver(() => this.#scheduleRender()).observe(scroller);
+    // The header's width is the room the columns share (it also changes when the
+    // scrollbar comes or goes, which the scroller's size doesn't show).
+    new ResizeObserver(() => this.#fitColumns()).observe(this.#header);
   }
 
   setSongs(songs: readonly Song[]): void {
     this.#songs = songs;
     this.element.setAttribute("aria-rowcount", String(songs.length + 1));
     this.#body.style.height = `${songs.length * rowHeight}px`;
+    this.#needs = null;
+    this.#fitColumns();
     this.#render({ refill: true });
   }
 
@@ -112,6 +131,71 @@ export class SongList {
   // Redraws the rows on screen, for example after the playing song changed.
   refresh(): void {
     this.#render({ refill: true });
+  }
+
+  // Shares the header's width between the stretching columns (see column-widths.ts). The
+  // widths go to the CSS as fr units in --columns: proportional to the pixels worked out
+  // here, while the grid still fills the row exactly.
+  #fitColumns(): void {
+    const { weights } = this.#options;
+    const style = getComputedStyle(this.#header);
+    const fixed = this.#headerCells.at(-1)?.offsetWidth ?? 0;
+    const gaps = Number.parseFloat(style.columnGap) * (this.#headerCells.length - 1);
+    const padding = Number.parseFloat(style.paddingLeft) + Number.parseFloat(style.paddingRight);
+    const available = this.#header.clientWidth - padding - gaps - fixed;
+    if (!this.element.isConnected || available <= 0) {
+      return; // Not on screen yet: the observer calls again once it is.
+    }
+    this.#needs ??= this.#measureNeeds();
+    const widths = fitColumns(
+      this.#needs.map((need, index) => ({ need, weight: weights[index] })),
+      available,
+    );
+    this.element.style.setProperty(
+      "--columns",
+      widths.map((width) => `minmax(0, ${width}fr)`).join(" "),
+    );
+  }
+
+  // How wide each stretching column has to be for its widest text, header included. Text
+  // is measured on a canvas in the list's font, since a virtual list only has the rows
+  // on screen to look at.
+  #measureNeeds(): number[] {
+    const style = getComputedStyle(this.element);
+    const fontSize = Number.parseFloat(style.fontSize);
+    if (this.#measurer && this.#measurer.font !== style.font) {
+      this.#measurer.font = style.font;
+      this.#textWidths.clear();
+    }
+    const { columns, weights, cells } = this.#options;
+    // The sort arrow: 0.7em with a 4px margin (see styles.css).
+    const arrow = this.#textWidth("\u25B2") * 0.7 + 4;
+    const needs = weights.map((_, index) => this.#textWidth(columns[index]) + arrow);
+    needs[0] += coverSpace;
+    // The "!" badge of a song that can't play: 1.2em wide with a 6px margin.
+    const badge = fontSize * 1.2 + 6;
+    for (const song of this.#songs) {
+      const texts = cells(song);
+      for (const [index, need] of needs.entries()) {
+        let width = this.#textWidth(texts[index]);
+        if (index === 0) {
+          width += coverSpace + (song.unplayable ? badge : 0);
+        }
+        if (width > need) {
+          needs[index] = width;
+        }
+      }
+    }
+    return needs.map((need) => need + slack);
+  }
+
+  #textWidth(text: string): number {
+    let width = this.#textWidths.get(text);
+    if (width === undefined) {
+      width = this.#measurer?.measureText(text).width ?? 0;
+      this.#textWidths.set(text, width);
+    }
+    return width;
   }
 
   #scheduleRender(): void {
