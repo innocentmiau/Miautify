@@ -132,6 +132,13 @@ export class PlayOrder<T> {
     }
   }
 
+  // Forgets the list and what played, as if nothing had been started.
+  clear(): void {
+    this.#list = [];
+    this.#queue = null;
+    this.#roundStart = 0;
+  }
+
   // Remembers that `item` started playing now.
   notePlayed(item: T, time = Date.now()): void {
     this.lastPlayed.set(this.#key(item), time);

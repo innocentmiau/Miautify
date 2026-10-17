@@ -176,6 +176,28 @@ export class Player extends EventTarget {
     }
   }
 
+  // Makes `songs` the list the current song is in, without interrupting it: it keeps
+  // playing from where it is, and next and previous follow the new list. `songs[start]`
+  // must be the current song (the same id).
+  continueIn(songs: readonly Song[], start: number): void {
+    this.#order.start(songs, start);
+    this.#changed();
+  }
+
+  // Stops and forgets the current song and its list: the player bar goes away, as if
+  // nothing had been played yet.
+  clear(): void {
+    this.#wantsToPlay = false;
+    this.#countedSong = null;
+    this.#order.clear();
+    this.#audio.pause();
+    // Without a source the element lets go of the file. (src = "" would try to load the
+    // page itself as a song and fail.)
+    this.#audio.removeAttribute("src");
+    this.#audio.load();
+    this.#changed();
+  }
+
   // Returns false (and does nothing) at the end of the queue.
   next(): boolean {
     const song = this.#order.next(isUnplayable);

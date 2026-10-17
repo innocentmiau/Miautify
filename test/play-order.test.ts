@@ -153,6 +153,19 @@ describe("PlayOrder with repeat", () => {
   });
 });
 
+describe("Clearing the PlayOrder", () => {
+  it("forgets the current song and what played", () => {
+    const playOrder = order({ repeat: "all" });
+    playOrder.start(list, 0);
+    playOrder.next(none);
+    playOrder.clear();
+    assert.equal(playOrder.current, null);
+    assert.equal(playOrder.hasNext(none), false);
+    assert.equal(playOrder.hasPrevious(none), false);
+    assert.equal(playOrder.next(none), null);
+  });
+});
+
 describe("PlayOrder with songs that can't play", () => {
   it("starts at the next song that can play", () => {
     const playOrder = order();
