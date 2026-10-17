@@ -125,6 +125,12 @@ body {
   color: var(--text-muted);
 }
 
+/* The settings button sits at the right end, even when the folder path is hidden. */
+.toolbar-settings {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
 .count,
 .status {
   color: var(--text-muted);
@@ -609,9 +615,11 @@ input.toggle-switch:checked::before {
   font-variant-numeric: tabular-nums;
 }
 
+/* Equal sides keep the controls centered. The center's width (--middle) is set from
+   app.ts, see player-bar-layout.ts. */
 .player-bar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) var(--middle, minmax(0, 2fr)) minmax(0, 1fr);
   align-items: center;
   gap: 16px;
   padding: 8px 16px;
@@ -704,16 +712,19 @@ input.toggle-switch:checked::before {
   cursor: default;
 }
 
+/* The padding keeps clear space between the timeline and the volume. */
 .volume-control {
   display: flex;
   justify-content: flex-end;
   align-items: center;
   gap: 4px;
+  padding-left: 16px;
 }
 
+/* Full width when there's room, narrower when there isn't. */
 .volume {
-  flex: none;
-  width: 110px;
+  flex: 0 1 220px;
+  min-width: 60px;
 }
 
 .toggle {
@@ -798,14 +809,18 @@ input.toggle-switch:checked::before {
   height: 48px;
 }
 
+/* flex-start: each text is only as wide as its words (at most the column), so app.ts can
+   measure how much room the full text needs. */
 .now-text {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   min-width: 0;
 }
 
 .now-title,
 .now-artist {
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
