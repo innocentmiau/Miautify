@@ -638,7 +638,7 @@ async function openLibrary(folder: string, restoreSongId: string | null = null):
   const cached = await window.miautify.cachedSongs();
   if (cached.length > 0) {
     showLibrary(cached);
-    restoreSong(restoreSongId);
+    placeSong(restoreSongId);
   } else {
     tree = null;
     folderTree.setTree(null);
@@ -649,13 +649,29 @@ async function openLibrary(folder: string, restoreSongId: string | null = null):
 
   const songs = await checkForChanges();
   if (songs && cached.length === 0) {
-    restoreSong(restoreSongId);
+    placeSong(restoreSongId);
   }
 }
 
-// Puts a song back in the player bar, paused, if nothing is loaded yet and it can play. Its queue is the
-// list on screen if the song is in it (like double-clicking it there), otherwise the
-// folder it's in. It may have been deleted or moved since, then there's nothing to restore.
+// Once a library's songs are known: the song already in the player (from the folder
+// chosen before) stays only if this library has it too, for example after choosing a
+// subfolder of the old folder. Otherwise the player is cleared. Then, if the player is
+// empty, the song from last time (`restoreId`) is put back, paused.
+function placeSong(restoreId: string | null): void {
+  const current = player.current;
+  if (current) {
+    const queue = queueFor(current.id);
+    if (queue) {
+      player.continueIn(queue.songs, queue.index);
+    } else {
+      player.clear();
+    }
+  }
+  restoreSong(restoreId);
+}
+
+// Puts a song back in the player bar, paused, if nothing is loaded yet and it can play.
+// It may have been deleted or moved since, then there's nothing to restore.
 function restoreSong(id: string | null): void {
   if (!tree || id === null || player.current !== null) {
     return;
@@ -664,18 +680,48 @@ function restoreSong(id: string | null): void {
   if (tree.allSongs.some((song) => song.id === id && song.unplayable)) {
     return;
   }
+  const queue = queueFor(id);
+  if (queue) {
+    player.selectFrom(queue.songs, queue.index);
+  }
+}
+
+// The list a song of this library plays in, and its place there: the list on screen if
+// the song is in it (like double-clicking it there), otherwise the folder it's in. Null
+// if the library doesn't have it.
+function queueFor(id: string): { songs: Song[]; index: number } | null {
+  if (!tree) {
+    return null;
+  }
   const shownIndex = listedSongs.findIndex((song) => song.id === id);
   if (shownIndex >= 0) {
-    player.selectFrom(listedSongs, shownIndex);
-    return;
+    return { songs: listedSongs, index: shownIndex };
   }
   const folder = folderOfSong(tree, id);
-  if (folder) {
-    player.selectFrom(
-      folder.songs,
-      folder.songs.findIndex((song) => song.id === id),
-    );
+  if (!folder) {
+    return null;
   }
+  return { songs: folder.songs, index: folder.songs.findIndex((song) => song.id === id) };
+}
+
+// The chosen folder can't be read any more (deleted, renamed, or on an unplugged drive):
+// everything from it goes away, its path, song count and the song in the player too, so
+// the message is the only thing left and clearly about this folder. Like a launch
+// without it, except for the message.
+function closeLibrary(): void {
+  libraryRoot = "";
+  folderLabel.textContent = "";
+  folderLabel.title = "";
+  countLabel.textContent = "";
+  refreshButton.hidden = true;
+  tree = null;
+  openFolder = null;
+  songSearch = null;
+  listedSongs = [];
+  folderTree.setTree(null);
+  clearSearch();
+  player.clear();
+  showMessage(t("library.scanFailed"));
 }
 
 // Scans the chosen folder in the background. The list stays usable meanwhile, and is only
@@ -694,15 +740,23 @@ async function checkForChanges(): Promise<Song[] | null> {
   });
 
   try {
-    const { songs, changed } = await window.miautify.scanChosenFolder();
-    if (changed || tree === null) {
-      showLibrary(songs, { keepScroll: true });
+    const outcome = await window.miautify.scanChosenFolder();
+    if (!outcome.found) {
+      closeLibrary();
+      return null;
     }
-    return songs;
+    if (outcome.changed || tree === null) {
+      showLibrary(outcome.songs, { keepScroll: true });
+    }
+    return outcome.songs;
   } catch (error) {
+    // The folder is there but couldn't be listed, for example a folder in it without
+    // permission. What was showing stays, since the folder itself still exists.
     console.error(error);
     if (tree === null) {
       showMessage(t("library.scanFailed"));
+    } else {
+      showNotice(t("library.scanFailed"));
     }
     return null;
   } finally {

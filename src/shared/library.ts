@@ -46,11 +46,15 @@ export interface StartupState {
   version: string;
 }
 
-export interface ScanOutcome {
-  songs: Song[];
-  // False when the folder matched the cache exactly, so the list on screen is still right.
-  changed: boolean;
-}
+export type ScanOutcome =
+  | {
+      found: true;
+      songs: Song[];
+      // False when the folder matched the cache exactly, so the list on screen is still right.
+      changed: boolean;
+    }
+  // The folder is gone: deleted, renamed, or on a drive that isn't plugged in.
+  | { found: false };
 
 // What the preload script exposes to the page as `window.miautify`.
 export interface MiautifyApi {

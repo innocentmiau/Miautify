@@ -119,6 +119,12 @@ ipcMain.handle(ipcChannels.scanChosenFolder, async (event): Promise<ScanOutcome>
   if (!chosenFolder) {
     throw new Error("No folder has been chosen yet.");
   }
+  // Gone since it was chosen: forget it for now, like a launch without it would. The
+  // setting is kept, so it opens again next launch if it comes back.
+  if (!(await isFolder(chosenFolder))) {
+    chosenFolder = undefined;
+    return { found: false };
+  }
   const started = performance.now();
 
   // At most one progress message every 100 ms (plus the last one): the page only needs to
@@ -140,7 +146,7 @@ ipcMain.handle(ipcChannels.scanChosenFolder, async (event): Promise<ScanOutcome>
 
   const ms = Math.round(performance.now() - started);
   console.info(`Scanned ${songs.length} songs in ${ms} ms (${changed.length} read from disk)`);
-  return { songs, changed: changed.length > 0 || removed.length > 0 };
+  return { found: true, songs, changed: changed.length > 0 || removed.length > 0 };
 });
 
 ipcMain.on(ipcChannels.setLastSong, (_event, id: unknown) => {
