@@ -32,6 +32,10 @@ All notable changes to Miautify are listed here, newest first. The format follow
 - The keyboard shortcuts list is now in Settings (`?` still shows it).
 - Song list columns are sized by what's in them. As the window grows, a column stops
   growing once its longest text fits, and the others get that room instead.
+- The player bar gives the song's title and artist room first. The timeline is as wide as
+  the buttons above it, and once the song's name fits it takes a quarter of the extra
+  space as the window grows. The volume slider is up to twice as wide as before.
+- A settings button at the right end of the toolbar (Settings stays in the menu too).
 
 ## [0.0.2] - 2026-09-28
 
