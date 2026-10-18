@@ -30,6 +30,9 @@ All notable changes to Miautify are listed here, newest first. The format follow
   If that place is no longer on a screen (a monitor was unplugged), it opens centered,
   sized to fit.
 
+- A "Choose music folder" button under "Nothing to play yet.", "Could not read this
+  folder." and "No mp3 files in this folder.", so there's always a way forward.
+
 ### Changed
 
 - "Include subfolders" moved from the folder view into Settings.
