@@ -11,6 +11,8 @@ import type { WindowState } from "./window-state.js";
 export interface Settings extends Preferences {
   "library.folder": string;
   "player.lastSongId": string;
+  // Where playback was in a song. Kept with the song's id, so it only applies to that song.
+  "player.position": { songId: string; seconds: number };
   // Volume slider position, 0 to 1 (not the gain: see src/renderer/volume.ts).
   "player.volume": number;
   "player.muted": boolean;

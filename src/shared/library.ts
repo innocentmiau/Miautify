@@ -31,6 +31,8 @@ export interface StartupState {
   // The folder chosen last time, or null if there is none or it no longer exists.
   folder: string | null;
   lastSongId: string | null;
+  // Where that song was, in seconds, or null to start it from the beginning.
+  lastPosition: number | null;
   // Null when never set, so the page uses its default.
   volume: number | null;
   muted: boolean;
@@ -70,6 +72,8 @@ export interface MiautifyApi {
   onScanProgress(listener: (done: number, total: number) => void): () => void;
   // Remembers the song in the player bar, to show it again on the next launch.
   setLastSong(id: string): void;
+  // Remembers where in that song playback is, to carry on from there next launch.
+  savePosition(id: string, seconds: number): void;
   // Remembers the volume slider position (0 to 1) and mute.
   saveVolume(level: number, muted: boolean): void;
   // Remembers the song list's sort (null: the folder's own order).
@@ -92,6 +96,7 @@ export const ipcChannels = {
   scanChosenFolder: "library:scan-chosen-folder",
   scanProgress: "library:scan-progress",
   setLastSong: "player:set-last-song",
+  savePosition: "player:save-position",
   saveVolume: "player:save-volume",
   saveSort: "library:save-sort",
   savePlayMode: "player:save-play-mode",

@@ -111,6 +111,7 @@ ipcMain.handle(ipcChannels.getStartupState, async (): Promise<StartupState> => {
   return {
     folder: chosenFolder ?? null,
     lastSongId: storage.get("player.lastSongId") ?? null,
+    lastPosition: savedPosition(),
     volume: storage.get("player.volume") ?? null,
     muted: storage.get("player.muted") ?? false,
     sort: savedSort(),
@@ -189,6 +190,28 @@ ipcMain.on(ipcChannels.setLastSong, (_event, id: unknown) => {
     storage.set("player.lastSongId", id);
   }
 });
+
+ipcMain.on(ipcChannels.savePosition, (_event, id: unknown, seconds: unknown) => {
+  if (typeof id === "string" && typeof seconds === "number" && Number.isFinite(seconds)) {
+    storage.set("player.position", { songId: id, seconds: Math.max(0, seconds) });
+  }
+});
+
+// The saved position, if it belongs to the last song (it's saved separately, and a
+// newer song may have started without its position being saved yet).
+function savedPosition(): number | null {
+  const position = storage.get("player.position");
+  const lastSongId = storage.get("player.lastSongId");
+  if (
+    typeof position?.songId !== "string" ||
+    position.songId !== lastSongId ||
+    typeof position.seconds !== "number" ||
+    !Number.isFinite(position.seconds)
+  ) {
+    return null;
+  }
+  return position.seconds;
+}
 
 ipcMain.on(ipcChannels.saveVolume, (_event, level: unknown, muted: unknown) => {
   if (typeof level === "number" && level >= 0 && level <= 1 && typeof muted === "boolean") {
