@@ -26,6 +26,10 @@ All notable changes to Miautify are listed here, newest first. The format follow
   through off, the whole list (reshuffled each round when shuffling) and the current
   song. Both are remembered.
 
+- The window opens at the size and place it had when it was closed, maximized if it was.
+  If that place is no longer on a screen (a monitor was unplugged), it opens centered,
+  sized to fit.
+
 ### Changed
 
 - "Include subfolders" moved from the folder view into Settings.
