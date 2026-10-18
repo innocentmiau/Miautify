@@ -113,4 +113,20 @@ describe("Storage", () => {
     storage.saveScan([{ path: "/m/a.mp3", size: 12, mtimeMs: 2 }], []);
     assert.equal(storage.coverOf("/m/a.mp3"), undefined);
   });
+
+  it("forgets every cover, found or not, when asked", () => {
+    const storage = new Storage(":memory:");
+    storage.saveScan(
+      [
+        { path: "/m/a.mp3", size: 10, mtimeMs: 1 },
+        { path: "/m/b.mp3", size: 10, mtimeMs: 1 },
+      ],
+      [],
+    );
+    storage.setCover("/m/a.mp3", "");
+    storage.setCover("/m/b.mp3", "abc");
+    storage.forgetCovers();
+    assert.equal(storage.coverOf("/m/a.mp3"), undefined);
+    assert.equal(storage.coverOf("/m/b.mp3"), undefined);
+  });
 });

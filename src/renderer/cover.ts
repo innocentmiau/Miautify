@@ -12,19 +12,23 @@ export function createCover(placeholder: SVGSVGElement): HTMLSpanElement {
   // Empty alt: the cover is decoration next to the song's name, not information of its own.
   image.alt = "";
   image.addEventListener("load", () => cover.classList.add("loaded"));
+  // A 404 (no cover): back to the placeholder.
+  image.addEventListener("error", () => cover.classList.remove("loaded"));
   cover.append(placeholder, image);
   return cover;
 }
 
 // Shows the picture at `url` in a cover box, or only the placeholder for null. Asking for
 // the picture already shown does nothing, so callers can set it as often as they like.
+// Going from one picture to another keeps the old one up until the new one has loaded (or
+// turned out not to exist), so a cover asked for again doesn't blink.
 export function setCover(cover: HTMLElement, url: string | null): void {
   const image = cover.querySelector("img");
   if (!image || image.getAttribute("src") === url) {
     return;
   }
-  cover.classList.remove("loaded");
   if (url === null) {
+    cover.classList.remove("loaded");
     image.removeAttribute("src");
   } else {
     image.src = url;

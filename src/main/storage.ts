@@ -149,6 +149,12 @@ export class Storage {
     this.#db.prepare("UPDATE songs SET cover = ? WHERE path = ?").run(hash, path);
   }
 
+  // Forgets every song's cover, so each is looked up again the next time it's shown. For
+  // pictures added or replaced next to the songs, which don't change the mp3s.
+  forgetCovers(): void {
+    this.#db.exec("UPDATE songs SET cover = NULL");
+  }
+
   // Remembers that a song started playing at `time`.
   notePlayed(songId: string, time: number): void {
     this.#db

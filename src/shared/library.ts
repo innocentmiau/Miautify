@@ -68,6 +68,8 @@ export interface MiautifyApi {
   cachedSongs(): Promise<Song[]>;
   // Scans the folder picked last. The page can't pass a path of its own.
   scanChosenFolder(): Promise<ScanOutcome>;
+  // Forgets which songs have which cover, so they're looked up again (Refresh).
+  recheckCovers(): Promise<void>;
   // Calls `listener` while a scan reads tags. Returns a function that stops listening.
   onScanProgress(listener: (done: number, total: number) => void): () => void;
   // Remembers the song in the player bar, to show it again on the next launch.
@@ -95,6 +97,7 @@ export const ipcChannels = {
   cachedSongs: "library:cached-songs",
   scanChosenFolder: "library:scan-chosen-folder",
   scanProgress: "library:scan-progress",
+  recheckCovers: "library:recheck-covers",
   setLastSong: "player:set-last-song",
   savePosition: "player:save-position",
   saveVolume: "player:save-volume",
@@ -114,6 +117,9 @@ export function songUrl(id: string): string {
 }
 
 // The song's cover as a small JPEG, or a 404 if it has none (see src/main/covers.ts).
-export function coverUrl(id: string): string {
-  return `${mediaScheme}://cover/${encodeURIComponent(id)}`;
+// `version` goes up when covers are looked up again: a new URL makes the page ask for the
+// picture again instead of showing the one it already has. The protocol ignores it.
+export function coverUrl(id: string, version = 0): string {
+  const url = `${mediaScheme}://cover/${encodeURIComponent(id)}`;
+  return version > 0 ? `${url}?v=${version}` : url;
 }

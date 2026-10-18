@@ -37,6 +37,9 @@ All notable changes to Miautify are listed here, newest first. The format follow
   every few seconds while playing and when you pause, so closing stays instant (it can
   be up to 5 seconds behind).
 
+- Refresh also looks for covers again, so a cover.jpg added, replaced or deleted next to
+  the songs shows up without touching the mp3s.
+
 ### Changed
 
 - "Include subfolders" moved from the folder view into Settings.

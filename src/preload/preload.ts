@@ -8,6 +8,7 @@ const api: MiautifyApi = {
   chooseFolder: () => ipcRenderer.invoke(ipcChannels.chooseFolder),
   cachedSongs: () => ipcRenderer.invoke(ipcChannels.cachedSongs),
   scanChosenFolder: () => ipcRenderer.invoke(ipcChannels.scanChosenFolder),
+  recheckCovers: () => ipcRenderer.invoke(ipcChannels.recheckCovers),
   onScanProgress: (listener) => {
     // Wrapped so the page never sees Electron's event object, only the two numbers.
     const handler = (_event: Electron.IpcRendererEvent, done: number, total: number) =>

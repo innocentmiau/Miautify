@@ -184,6 +184,11 @@ ipcMain.handle(ipcChannels.scanChosenFolder, async (event): Promise<ScanOutcome>
   return { found: true, songs, changed: changed.length > 0 || removed.length > 0 };
 });
 
+// Invoked (not sent) so the page knows the answers are gone before it asks for covers again.
+ipcMain.handle(ipcChannels.recheckCovers, () => {
+  storage.forgetCovers();
+});
+
 ipcMain.on(ipcChannels.setLastSong, (_event, id: unknown) => {
   // Anything from the page is checked before it's stored.
   if (typeof id === "string") {

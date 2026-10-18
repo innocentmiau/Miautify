@@ -84,6 +84,9 @@ let songSearch: SongSearch | null = null;
 let searchQuery = "";
 const folderResultLimit = 24;
 
+// Goes up on each Refresh, so the covers on screen are asked for again (see coverUrl).
+let coverVersion = 0;
+
 // The open folder's own songs, in the order shown. Double-clicking one queues it and every
 // song after it, so a folder plays like a playlist.
 let listedSongs: Song[] = [];
@@ -164,7 +167,7 @@ const songList = new SongList(content, {
   ],
   isPlaying: (song) => song.id === player.current?.id,
   unplayableLabel: t("player.unplayable"),
-  coverUrl: (song) => coverUrl(song.id),
+  coverUrl: (song) => coverUrl(song.id, coverVersion),
   coverPlaceholder: () => icon(musicNoteIconPath),
   onPlay: (index) => player.playFrom(listedSongs, index),
   onSort: (column) => {
@@ -630,9 +633,27 @@ searchBox.addEventListener("keydown", (event) => {
   }
 });
 
-refreshButton.addEventListener("click", () => {
-  void checkForChanges();
-});
+refreshButton.addEventListener("click", () => void refresh());
+
+// Refresh: looks for new, changed and deleted songs like the check on launch, and also
+// looks for covers again, since adding or replacing a cover.jpg doesn't change the mp3s.
+async function refresh(): Promise<void> {
+  if (refreshButton.disabled) {
+    return; // Already refreshing.
+  }
+  refreshButton.disabled = true;
+  try {
+    await window.miautify.recheckCovers();
+    coverVersion++;
+  } catch (error) {
+    console.error(error);
+  }
+  await checkForChanges();
+  // Redrawn with the new cover URLs, also when the scan found nothing new and kept the
+  // view as it was.
+  refreshView({ keepScroll: true });
+  updatePlayerBar();
+}
 
 // On launch: open the folder from last time, and put the last song back in the player bar,
 // paused. Called from the end of this file, once everything above and below is defined.
@@ -976,7 +997,7 @@ function renderFolderTiles(folders: Folder[]): void {
 
     const cover = createCover(icon(folderIconPath));
     const firstSong = child.allSongs[0];
-    setCover(cover, firstSong ? coverUrl(firstSong.id) : null);
+    setCover(cover, firstSong ? coverUrl(firstSong.id, coverVersion) : null);
 
     tile.append(cover, text);
     tile.addEventListener("dblclick", () => showFolder(child));
@@ -1020,7 +1041,7 @@ function updatePlayerBar(): void {
 
   nowTitle.textContent = song.title ?? song.fileName;
   nowArtist.textContent = song.artist ?? "";
-  setCover(nowCover, coverUrl(song.id));
+  setCover(nowCover, coverUrl(song.id, coverVersion));
   const label = player.isPlaying ? t("player.pause") : t("player.play");
   toggleButton.title = label;
   toggleButton.setAttribute("aria-label", label);
