@@ -168,11 +168,12 @@ export class Player extends EventTarget {
     // Null: nothing in the list can play, and whatever was playing carries on.
   }
 
-  // Same as playFrom, but paused: the song shows in the player bar, ready to play.
-  selectFrom(songs: readonly Song[], start: number): void {
+  // Same as playFrom, but paused: the song shows in the player bar, ready to play, at
+  // `at` seconds into it.
+  selectFrom(songs: readonly Song[], start: number, { at = 0 } = {}): void {
     const song = this.#order.start(songs, start);
     if (song) {
-      this.#load(song, { autoplay: false });
+      this.#load(song, { autoplay: false, at });
     }
   }
 
@@ -238,10 +239,15 @@ export class Player extends EventTarget {
     this.#audio.pause();
   }
 
-  #load(song: Song, { autoplay = true } = {}): void {
+  #load(song: Song, { autoplay = true, at = 0 } = {}): void {
     this.#wantsToPlay = autoplay;
     this.#countedSong = null;
     this.#audio.src = songUrl(song.id);
+    if (at > 0) {
+      // Before the file has loaded this is where it will start; past the end, it just
+      // starts at the end.
+      this.#audio.currentTime = at;
+    }
     if (autoplay) {
       this.#resume();
     }

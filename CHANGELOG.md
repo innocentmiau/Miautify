@@ -33,6 +33,10 @@ All notable changes to Miautify are listed here, newest first. The format follow
 - A "Choose music folder" button under "Nothing to play yet.", "Could not read this
   folder." and "No mp3 files in this folder.", so there's always a way forward.
 
+- The last song comes back where you left it, not from the start. The position is saved
+  every few seconds while playing and when you pause, so closing stays instant (it can
+  be up to 5 seconds behind).
+
 ### Changed
 
 - "Include subfolders" moved from the folder view into Settings.

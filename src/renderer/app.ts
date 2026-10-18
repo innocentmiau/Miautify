@@ -324,6 +324,7 @@ seekSlider.addEventListener("input", () => {
 seekSlider.addEventListener("change", () => {
   draggingSeek = false;
   player.seek(Number(seekSlider.value));
+  savePosition();
 });
 
 // On the focused timeline, the arrows jump 5 seconds like everywhere else, instead of the
@@ -535,6 +536,36 @@ player.addEventListener("change", () => {
   }
 });
 
+// Where the song is, so the next launch carries on from there. Saved every few seconds
+// while playing, and right away on pause or a jump on the timeline. Nothing is saved on
+// quit, so closing stays instant: the position may be up to positionSaveMs behind.
+const positionSaveMs = 5000;
+let positionSavedAt = 0;
+let wasPlaying = false;
+// From the last session, used once when its song is put back (see restoreSong).
+let restorePosition: number | null = null;
+
+function savePosition(): void {
+  const song = player.current;
+  if (song) {
+    positionSavedAt = performance.now();
+    window.miautify.savePosition(song.id, player.currentTime);
+  }
+}
+
+player.addEventListener("time", () => {
+  if (player.isPlaying && performance.now() - positionSavedAt >= positionSaveMs) {
+    savePosition();
+  }
+});
+
+player.addEventListener("change", () => {
+  if (wasPlaying && !player.isPlaying) {
+    savePosition(); // Paused.
+  }
+  wasPlaying = player.isPlaying;
+});
+
 player.addEventListener("volume", () => updateVolumeControl());
 
 // A song couldn't play: remember it (main saves it if the file still exists), mark its row,
@@ -610,6 +641,7 @@ async function restoreLastSession(): Promise<void> {
     const state = await window.miautify.getStartupState();
     const { folder, lastSongId, volume, muted } = state;
     savedSongId = lastSongId;
+    restorePosition = state.lastPosition;
     preferences = state.preferences;
     sort = state.sort;
     player.shuffle = state.shuffle;
@@ -689,7 +721,8 @@ function restoreSong(id: string | null): void {
   }
   const queue = queueFor(id);
   if (queue) {
-    player.selectFrom(queue.songs, queue.index);
+    player.selectFrom(queue.songs, queue.index, { at: restorePosition ?? 0 });
+    restorePosition = null;
   }
 }
 
