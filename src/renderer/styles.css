@@ -306,11 +306,20 @@ body {
   font-weight: 600;
 }
 
+/* Shown instead of the songs: a line of text, and sometimes a button under it. */
 .message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
   margin: 0;
   padding: 48px 16px;
   text-align: center;
   color: var(--text-muted);
+}
+
+.message p {
+  margin: 0;
 }
 
 /* Above the folder's contents: the path on the left, the toggle on the right. */

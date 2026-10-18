@@ -556,7 +556,14 @@ player.addEventListener("time", () => {
   }
 });
 
-chooseButton.addEventListener("click", async () => {
+chooseButton.addEventListener("click", () => void chooseFolder());
+
+// From the menu, or the button under a message like "Nothing to play yet.".
+async function chooseFolder(): Promise<void> {
+  // Disabled while a scan runs, so two scans can't overlap. The message's button follows it.
+  if (chooseButton.disabled) {
+    return;
+  }
   try {
     const folder = await window.miautify.chooseFolder();
     if (folder !== null) {
@@ -566,7 +573,7 @@ chooseButton.addEventListener("click", async () => {
   } catch (error) {
     console.error(error);
   }
-});
+}
 
 // Typing searches as you go, at most once per frame however fast the keys come.
 let searchFrame = 0;
@@ -616,13 +623,13 @@ async function restoreLastSession(): Promise<void> {
     player.muted = muted;
     updateVolumeControl();
     if (folder === null) {
-      showMessage(t("library.empty"));
+      showMessage(t("library.empty"), { chooseFolder: true });
       return;
     }
     await openLibrary(folder, lastSongId);
   } catch (error) {
     console.error(error);
-    showMessage(t("library.empty"));
+    showMessage(t("library.empty"), { chooseFolder: true });
   }
 }
 
@@ -721,7 +728,7 @@ function closeLibrary(): void {
   folderTree.setTree(null);
   clearSearch();
   player.clear();
-  showMessage(t("library.scanFailed"));
+  showMessage(t("library.scanFailed"), { chooseFolder: true });
 }
 
 // Scans the chosen folder in the background. The list stays usable meanwhile, and is only
@@ -754,7 +761,7 @@ async function checkForChanges(): Promise<Song[] | null> {
     // permission. What was showing stays, since the folder itself still exists.
     console.error(error);
     if (tree === null) {
-      showMessage(t("library.scanFailed"));
+      showMessage(t("library.scanFailed"), { chooseFolder: true });
     } else {
       showNotice(t("library.scanFailed"));
     }
@@ -776,7 +783,7 @@ function showLibrary(songs: Song[], { keepScroll = false } = {}): void {
     tree = null;
     folderTree.setTree(null);
     listedSongs = [];
-    showMessage(t("library.noSongs"));
+    showMessage(t("library.noSongs"), { chooseFolder: true });
     return;
   }
   tree = buildFolderTree(libraryRoot, songs);
@@ -951,10 +958,23 @@ function renderFolderTiles(folders: Folder[]): void {
   folderGrid.replaceChildren(...tiles);
 }
 
-function showMessage(text: string): void {
-  const message = document.createElement("p");
+// A message in the middle instead of the songs. `chooseFolder` adds a "Choose music
+// folder" button under it, for when there's nothing to show without one: no folder yet,
+// a folder that's gone, or one without songs.
+function showMessage(text: string, { chooseFolder: withButton = false } = {}): void {
+  const message = document.createElement("div");
   message.className = "message";
-  message.textContent = text;
+  const paragraph = document.createElement("p");
+  paragraph.textContent = text;
+  message.append(paragraph);
+  if (withButton) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "primary";
+    button.textContent = t("library.chooseFolder");
+    button.addEventListener("click", () => void chooseFolder());
+    message.append(button);
+  }
   content.replaceChildren(message);
 }
 
