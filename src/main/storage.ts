@@ -3,6 +3,7 @@ import type { RepeatMode } from "../shared/library.js";
 import type { Preferences } from "../shared/preferences.js";
 import type { SongSort } from "../shared/sort.js";
 import type { CachedSong } from "./scanner.js";
+import type { WindowState } from "./window-state.js";
 
 // Everything the app remembers between launches, by key, with the type of each value: the
 // user's preferences (shared/preferences.ts) plus the app's own state below. A typo in a
@@ -17,6 +18,8 @@ export interface Settings extends Preferences {
   "player.repeat": RepeatMode;
   // Not set while the list is in the folder's own order.
   "library.sort": SongSort;
+  // The window's size, place and maximized state when it was last closed.
+  "window.state": WindowState;
 }
 
 // Each entry upgrades the database by one version. Never edit one that has shipped: add a

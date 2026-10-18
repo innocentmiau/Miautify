@@ -1,6 +1,6 @@
 import { stat } from "node:fs/promises";
 import path from "node:path";
-import { app, BrowserWindow, dialog, ipcMain } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, screen } from "electron";
 import { initI18n, pickLanguage } from "../shared/i18n.js";
 import {
   ipcChannels,
@@ -29,6 +29,7 @@ import {
 } from "./media.js";
 import { scanFolder, songsFromCache } from "./scanner.js";
 import { Storage } from "./storage.js";
+import { isWindowState, placeWindow } from "./window-state.js";
 
 // Opened when the app is ready (see the bottom of this file).
 let storage: Storage;
@@ -38,11 +39,27 @@ async function createWindow(): Promise<void> {
   const language = pickLanguage(app.getPreferredSystemLanguages());
   const t = await initI18n(language);
 
+  // The size and place from last time, if they still fit the screens there are now (see
+  // window-state.ts). x and y are left out to let the system center the window, and on
+  // Wayland, where apps can't place their windows, the system ignores them anyway.
+  const minSize = { width: 480, height: 320 };
+  const saved = storage.get("window.state");
+  const state = isWindowState(saved) ? saved : null;
+  const bounds = state
+    ? placeWindow(
+        state.bounds,
+        [screen.getPrimaryDisplay(), ...screen.getAllDisplays()].map((display) => display.workArea),
+        minSize,
+      )
+    : { width: 1000, height: 700 };
+
   const window = new BrowserWindow({
-    width: 1000,
-    height: 700,
-    minWidth: 480,
-    minHeight: 320,
+    ...bounds,
+    minWidth: minSize.width,
+    minHeight: minSize.height,
+    // Shown once the page has drawn (below), so a window opened maximized doesn't first
+    // appear at its normal size.
+    show: false,
     title: t("app.name"),
     // Shown for a moment before the page's CSS loads. Keep it equal to --background in
     // styles.css, or the window flashes a different color on launch.
@@ -54,6 +71,23 @@ async function createWindow(): Promise<void> {
     webPreferences: {
       preload: path.join(import.meta.dirname, "../preload/preload.cjs"),
     },
+  });
+
+  window.once("ready-to-show", () => {
+    if (state?.maximized) {
+      window.maximize(); // Shows it too.
+    } else {
+      window.show();
+    }
+  });
+
+  // Saved on close. getNormalBounds is the size and place it goes back to when
+  // un-maximized, so a window closed maximized still remembers its normal size.
+  window.on("close", () => {
+    storage.set("window.state", {
+      bounds: window.getNormalBounds(),
+      maximized: window.isMaximized(),
+    });
   });
 
   // The renderer runs its own i18next, so it gets the chosen language in the URL.
